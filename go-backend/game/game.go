@@ -1,9 +1,11 @@
-package main
+package game
 
 import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
+	"strings"
 	"sync"
 )
 
@@ -11,9 +13,9 @@ type Game interface {
 	Id() string
 	State() *State
 	StateChanges() chan *State
-	AddPlayer(name string) (*Player, error)
+	AddPlayer(name string) (Player, error)
 	RemovePlayer(id PlayerId) error
-	TakeTurn(playerId PlayerId, space int) error
+	HandleMsg(playerId PlayerId, msg FromBrowser) error
 	BroadcastState()
 	sync.Locker
 }
@@ -53,9 +55,9 @@ func (g *game) Unlock() {
 	g.mutex.Unlock()
 }
 
-func (g *game) AddPlayer(name string) (*Player, error) {
+func (g *game) AddPlayer(name string) (Player, error) {
 	if len(g.state.Players) >= 2 {
-		return nil, errors.New("game is full")
+		return Player{}, errors.New("game is full")
 	}
 
 	var id PlayerId
@@ -78,7 +80,7 @@ func (g *game) AddPlayer(name string) (*Player, error) {
 	g.state.Players = append(g.state.Players, player)
 	g.addChatMessage(systemSource(), player.String()+" has joined the game!")
 	g.BroadcastState()
-	return &player, nil
+	return player, nil
 }
 
 func (g *game) RemovePlayer(id PlayerId) error {
@@ -95,7 +97,48 @@ func (g *game) RemovePlayer(id PlayerId) error {
 	return nil
 }
 
-func (g *game) TakeTurn(playerId PlayerId, space int) error {
+func (g *game) HandleMsg(playerId PlayerId, msg FromBrowser) error {
+	log.Println("handling message from player", playerId, ":", msg)
+	switch msg.MsgType {
+	case MsgTypeChat:
+		chatMsg := strings.TrimSpace(msg.Text)
+		if chatMsg == "" {
+			return errors.New("chat message must not be empty")
+		}
+		if len(chatMsg) > 500 {
+			return errors.New("chat message must not be longer than 500 characters")
+		}
+		g.addChatMessage(playerSource(playerId), msg.Text)
+		return nil
+	case MsgTypeMove:
+		return g.takeTurn(playerId, msg.Space)
+	case MsgTypeChangeName:
+		newName := strings.TrimSpace(msg.Text)
+		if newName == "" {
+			newName = "Unnamed Player"
+		} else if len(newName) > 32 {
+			newName = newName[:32]
+		}
+		if err := g.updatePlayerName(playerId, newName); err != nil {
+			return err
+		}
+		g.addChatMessage(playerSource(playerId), fmt.Sprintf("Now my name is %s!", newName))
+		return nil
+	case MsgTypeRematch:
+		if !g.state.Winner.Done {
+			return errors.New("game is not over")
+		}
+		g.addChatMessage(playerSource(playerId), "Rematch!")
+		g.addChatMessage(systemSource(), "Players have swapped sides.")
+		g.reset()
+		g.swapTeams()
+		return nil
+	default:
+		return errors.New("unknown message type")
+	}
+}
+
+func (g *game) takeTurn(playerId PlayerId, space int) error {
 	if len(g.state.Players) == 0 {
 		return errors.New("not enough players")
 	}
@@ -179,6 +222,16 @@ func (g *game) checkDraw() bool {
 		}
 	}
 	return true
+}
+
+func (g *game) updatePlayerName(playerId PlayerId, newName string) error {
+	playerIdx, err := g.getPlayerIndex(playerId)
+	if err != nil {
+		return err
+	}
+	g.state.Players[playerIdx].Name = newName
+	g.addChatMessage(playerSource(playerId), "Changed name to "+newName)
+	return nil
 }
 
 func (g *game) reset() {
@@ -268,6 +321,11 @@ const TeamNone Team = ' '
 const TeamX Team = 'X'
 const TeamO Team = 'O'
 
+func (s State) String() string {
+	return fmt.Sprintf("State{Turn: %s, Winner: %s, Players: %s, Board: %s, Chat: %+v}",
+		string(s.Turn), s.Winner.String(), s.Players, s.Board, s.Chat)
+}
+
 func (s State) Clone() *State {
 	return &State{
 		Turn:    s.Turn,
@@ -312,6 +370,10 @@ func (e EndState) Clone() EndState {
 		Winner: e.Winner,
 		Draw:   e.Draw,
 	}
+}
+
+func (e EndState) String() string {
+	return fmt.Sprintf("EndState{Done: %t, Winner: %s, Draw: %t}", e.Done, string(e.Winner), e.Draw)
 }
 
 func (e EndState) MarshalJSON() ([]byte, error) {
@@ -490,17 +552,45 @@ func (m *FromBrowser) UnmarshalJSON(data []byte) error {
 }
 
 type JoinedGameMsg struct {
-	JoinedGame struct {
-		Token    string   `json:"token"`
-		PlayerId PlayerId `json:"player_id"`
-		State    State    `json:"state"`
-	} `json:"JoinedGame"`
+	JoinedGame JoinedGameInner `json:"JoinedGame"`
+}
+
+type JoinedGameInner struct {
+	Token    string   `json:"token"`
+	PlayerId PlayerId `json:"player_id"`
+	State    *State   `json:"state"`
 }
 
 type GameStateMsg struct {
-	GameState State `json:"GameState"`
+	GameState *State `json:"GameState"`
 }
 
 type ErrorMsg struct {
 	Error string `json:"Error"`
+}
+
+func NewJoinedGameMsg(token string, playerId PlayerId, state *State) JoinedGameMsg {
+	return JoinedGameMsg{
+		JoinedGame: struct {
+			Token    string   `json:"token"`
+			PlayerId PlayerId `json:"player_id"`
+			State    *State   `json:"state"`
+		}{
+			Token:    token,
+			PlayerId: playerId,
+			State:    state,
+		},
+	}
+}
+
+func NewGameStateMsg(state *State) GameStateMsg {
+	return GameStateMsg{
+		GameState: state,
+	}
+}
+
+func NewErrorMsg(errorMsg string) ErrorMsg {
+	return ErrorMsg{
+		Error: errorMsg,
+	}
 }
