@@ -15,6 +15,7 @@ type Game interface {
 	StateChanges() chan *State
 	AddPlayer(name string) (Player, error)
 	RemovePlayer(id PlayerId) error
+	IsEmpty() bool
 	HandleMsg(playerId PlayerId, msg FromBrowser) error
 	BroadcastState()
 	sync.Locker
@@ -64,7 +65,7 @@ func (g *game) AddPlayer(name string) (Player, error) {
 	var team Team
 
 	if len(g.state.Players) == 0 {
-		id = 0
+		id = 1
 		team = TeamX
 	} else {
 		otherPlayer := g.state.Players[len(g.state.Players)-1]
@@ -95,6 +96,10 @@ func (g *game) RemovePlayer(id PlayerId) error {
 	g.addChatMessage(systemSource(), player.String()+" has left the game!")
 	g.BroadcastState()
 	return nil
+}
+
+func (g *game) IsEmpty() bool {
+	return len(g.state.Players) == 0
 }
 
 func (g *game) HandleMsg(playerId PlayerId, msg FromBrowser) error {
@@ -320,6 +325,31 @@ type Team byte
 const TeamNone Team = ' '
 const TeamX Team = 'X'
 const TeamO Team = 'O'
+
+func (t *Team) MarshalJSON() ([]byte, error) {
+	return json.Marshal(string(*t))
+}
+
+func (t *Team) UnmarshalJSON(data []byte) error {
+	var s string
+	if err := json.Unmarshal(data, &s); err != nil {
+		return err
+	}
+	if len(s) != 1 {
+		return errors.New("invalid team")
+	}
+	switch s[0] {
+	case 'X':
+		*t = TeamX
+	case 'O':
+		*t = TeamO
+	case ' ':
+		*t = TeamNone
+	default:
+		return errors.New("invalid team")
+	}
+	return nil
+}
 
 func (s State) String() string {
 	return fmt.Sprintf("State{Turn: %s, Winner: %s, Players: %s, Board: %s, Chat: %+v}",

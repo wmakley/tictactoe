@@ -32,6 +32,7 @@ func main() {
 
 type ServerState interface {
 	JoinOrNewGame(id string, playerName string) (game.Game, game.Player, error)
+	DeleteGame(id string) error
 }
 
 func getOptionsHandler() http.HandlerFunc {
@@ -73,7 +74,7 @@ func websocketHandler(state ServerState) http.HandlerFunc {
 		}
 		log.Println("token:", token, "name:", playerName)
 
-		c, err := websocket.Accept(w, r, &websocket.AcceptOptions{
+		conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
 			InsecureSkipVerify: true,
 			OriginPatterns: []string{
 				// TODO: should be configurable
@@ -85,21 +86,43 @@ func websocketHandler(state ServerState) http.HandlerFunc {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
-		defer func(c *websocket.Conn, code websocket.StatusCode, reason string) {
-			// TODO: remove player from game
-			err := c.Close(code, reason)
+
+		var g game.Game
+		var player game.Player
+
+		defer func(c *websocket.Conn, g game.Game, playerId game.PlayerId) {
+			err := c.Close(websocket.StatusNormalClosure, "defer termination")
 			if err != nil && !strings.Contains(err.Error(), "already wrote close") {
 				// totally fine if conn is already closed normally, otherwise log error
 				log.Println("error closing conn in deferred:", err)
 			}
-		}(c, websocket.StatusInternalError, "defer termination")
 
-		game_, player, err := state.JoinOrNewGame(token, playerName)
+			if g != nil {
+				g.Lock()
+				defer g.Unlock()
+
+				if player.Id > 0 {
+					err = g.RemovePlayer(player.Id)
+					if err != nil {
+						log.Println("error removing player:", err)
+					}
+				}
+
+				if g.IsEmpty() {
+					err = state.DeleteGame(g.Id())
+					if err != nil {
+						log.Println("error deleting game:", err)
+					}
+				}
+			}
+		}(conn, g, player.Id)
+
+		g, player, err = state.JoinOrNewGame(token, playerName)
 		if err != nil {
 			log.Println("error joining game:", err)
 			ctx, cancel := context.WithTimeout(r.Context(), time.Second*10)
 			defer cancel()
-			writeErr := c.Write(ctx, websocket.MessageText, []byte("error joining game: "+err.Error()))
+			writeErr := conn.Write(ctx, websocket.MessageText, []byte("error joining game: "+err.Error()))
 			if writeErr != nil {
 				log.Println("error writing error to websocket:", writeErr)
 			}
@@ -108,12 +131,9 @@ func websocketHandler(state ServerState) http.HandlerFunc {
 
 		// send joined game details to the client
 		err = (func(token string, playerId game.PlayerId, state *game.State) error {
-			ctx, cancel := context.WithTimeout(r.Context(), time.Second*10)
-			defer cancel()
-
 			msg := game.NewJoinedGameMsg(token, playerId, state)
-			return sendJSON(ctx, c, msg)
-		})(token, player.Id, game_.State())
+			return sendJSON(r.Context(), conn, msg)
+		})(token, player.Id, g.State())
 		if err != nil {
 			log.Println("error writing joined game msg:", err)
 			return
@@ -160,7 +180,7 @@ func websocketHandler(state ServerState) http.HandlerFunc {
 					log.Printf("decoded msg: %+v", decodedMsg)
 					if err := game_.HandleMsg(playerId, decodedMsg); err != nil {
 						log.Println("error handling msg:", err)
-						err := sendJSON(context.Background(), c, game.NewErrorMsg(err.Error()))
+						err := sendJSON(r.Context(), c, game.NewErrorMsg(err.Error()))
 						if err != nil {
 							log.Println("error sending error msg:", err)
 							return
@@ -173,18 +193,7 @@ func websocketHandler(state ServerState) http.HandlerFunc {
 					return
 				}
 			}
-		})(game_, player.Id, c)
-
-		game_.Lock()
-		if err := game_.RemovePlayer(player.Id); err != nil {
-			log.Println("ignoring error removing player:", err)
-		}
-		game_.Unlock()
-		err = c.Close(websocket.StatusNormalClosure, "normal termination")
-		if err != nil {
-			log.Println("error closing conn normally:", err)
-			return
-		}
+		})(g, player.Id, conn)
 	}
 }
 
@@ -247,4 +256,17 @@ func (s *serverState) JoinOrNewGame(id string, playerName string) (game.Game, ga
 	}
 
 	return game_, player, nil
+}
+
+func (s *serverState) DeleteGame(id string) error {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	_, ok := s.games[id]
+	if !ok {
+		return errors.New("game not found")
+	}
+
+	delete(s.games, id)
+	return nil
 }

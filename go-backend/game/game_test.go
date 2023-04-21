@@ -1,6 +1,8 @@
 package game
 
 import (
+	"bytes"
+	"encoding/json"
 	"github.com/stretchr/testify/require"
 	"testing"
 )
@@ -86,6 +88,42 @@ func TestGame_RemovePlayer(t *testing.T) {
 	require.NotNil(t, chatMessage)
 	require.Equal(t, "test2 (O) has left the game!", chatMessage.Text)
 	require.Equal(t, SourceTypeSystem, chatMessage.Source.SourceType)
+}
+
+func TestJoinedGameMsg_MarshalJSON(t *testing.T) {
+	game, err := NewGame("test")
+	require.NoError(t, err)
+
+	game.Lock()
+	defer game.Unlock()
+
+	player, err := game.AddPlayer("test")
+	require.NoError(t, err)
+
+	msg := NewJoinedGameMsg(game.Id(), player.Id, game.State())
+	var buf bytes.Buffer
+	err = json.NewEncoder(&buf).Encode(msg)
+	require.NoError(t, err)
+	require.Equal(t, `{"JoinedGame":{"token":"test","player_id":1,"state":{"turn":"X","winner":null,"players":[{"id":1,"team":"X","name":"test","wins":0}],"board":[" "," "," "," "," "," "," "," "," "],"chat":[{"id":0,"source":"System","text":"test (X) has joined the game!"}]}}}
+`, buf.String())
+}
+
+func TestGameStateMsg_MarshalJSON(t *testing.T) {
+	game, err := NewGame("test")
+	require.NoError(t, err)
+
+	game.Lock()
+	defer game.Unlock()
+
+	state := game.State()
+	require.Equal(t, []Team{' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '}, state.Board)
+
+	msg := NewGameStateMsg(state)
+	var buf bytes.Buffer
+	err = json.NewEncoder(&buf).Encode(msg)
+	require.NoError(t, err)
+	require.Equal(t, `{"GameState":{"turn":"X","winner":null,"players":[],"board":[" "," "," "," "," "," "," "," "," "],"chat":[]}}
+`, buf.String())
 }
 
 func TestGame_BrowserMsg_UnmarshalJSON_Rematch(t *testing.T) {
