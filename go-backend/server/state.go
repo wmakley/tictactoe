@@ -44,7 +44,6 @@ func (s *serverState) JoinOrNewGame(id string, playerName string) (game.Game, ga
 		playerName = "Unnamed Player"
 	}
 
-	var player game.Player
 	game_, err := (func(s *serverState) (game.Game, error) {
 		s.mutex.Lock()
 		defer s.mutex.Unlock()
@@ -62,13 +61,13 @@ func (s *serverState) JoinOrNewGame(id string, playerName string) (game.Game, ga
 		return game_, nil
 	})(s)
 	if err != nil {
-		return nil, player, err
+		return nil, game.Player{}, err
 	}
 
 	game_.Lock()
 	defer game_.Unlock()
 
-	player, err = game_.AddPlayer(playerName)
+	player, err := game_.AddPlayer(playerName)
 	if err != nil {
 		return nil, player, err
 	}
