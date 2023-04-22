@@ -26,27 +26,6 @@ func main() {
 	}
 }
 
-//func disconnectHandler(state server.State) {
-//	for {
-//		select {
-//		case dc := <-state.Disconnects():
-//			log.Printf("disconnecting player: %+v", dc)
-//
-//			state.Lock()
-//			g, ok := state.Games()[dc.GameId]
-//			state.Unlock()
-//
-//
-//			g.Lock()
-//			err := g.RemovePlayer(dc)
-//			g.Unlock()
-//			if err != nil {
-//				log.Println("error removing player:", err)
-//			}
-//		}
-//	}
-//}
-
 func getOptionsHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodOptions {
