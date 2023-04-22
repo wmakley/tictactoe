@@ -4,25 +4,21 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"go-backend/game"
+	"go-backend/server"
 	"log"
 	"net/http"
 	"nhooyr.io/websocket"
 	"strings"
-	"sync"
 	"time"
 )
 
 func main() {
-	state := serverState{
-		games: make(map[string]game.Game),
-		mutex: sync.Mutex{},
-	}
+	state := server.NewState()
 
 	mux := http.NewServeMux()
 	mux.Handle("/", getOptionsHandler())
-	mux.Handle("/ws", websocketHandler(&state))
+	mux.Handle("/ws", websocketHandler(state))
 
 	err := http.ListenAndServe(":3000", mux)
 	if err != nil {
@@ -30,10 +26,26 @@ func main() {
 	}
 }
 
-type ServerState interface {
-	JoinOrNewGame(id string, playerName string) (game.Game, game.Player, error)
-	DeleteGame(id string) error
-}
+//func disconnectHandler(state server.State) {
+//	for {
+//		select {
+//		case dc := <-state.Disconnects():
+//			log.Printf("disconnecting player: %+v", dc)
+//
+//			state.Lock()
+//			g, ok := state.Games()[dc.GameId]
+//			state.Unlock()
+//
+//
+//			g.Lock()
+//			err := g.RemovePlayer(dc)
+//			g.Unlock()
+//			if err != nil {
+//				log.Println("error removing player:", err)
+//			}
+//		}
+//	}
+//}
 
 func getOptionsHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -51,7 +63,12 @@ func getOptionsHandler() http.HandlerFunc {
 	}
 }
 
-func websocketHandler(state ServerState) http.HandlerFunc {
+type connectionState struct {
+	game     game.Game
+	playerId game.PlayerId
+}
+
+func websocketHandler(state server.State) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			w.WriteHeader(http.StatusNotFound)
@@ -87,113 +104,116 @@ func websocketHandler(state ServerState) http.HandlerFunc {
 			return
 		}
 
-		var g game.Game
-		var player game.Player
+		ctx := context.Background()
+		incomingMsgs := make(chan []byte, 1)
+		fatalSocketErr := make(chan error)
 
-		defer func(c *websocket.Conn, g game.Game, playerId game.PlayerId) {
-			err := c.Close(websocket.StatusNormalClosure, "defer termination")
-			if err != nil && !strings.Contains(err.Error(), "already wrote close") {
-				// totally fine if conn is already closed normally, otherwise log error
-				log.Println("error closing conn in deferred:", err)
-			}
+		connState := connectionState{
+			game:     nil,
+			playerId: 0,
+		}
 
-			if g != nil {
-				g.Lock()
-				defer g.Unlock()
+		defer disconnect(conn, state, &connState)
 
-				if player.Id > 0 {
-					err = g.RemovePlayer(player.Id)
-					if err != nil {
-						log.Println("error removing player:", err)
-					}
-				}
-
-				if g.IsEmpty() {
-					err = state.DeleteGame(g.Id())
-					if err != nil {
-						log.Println("error deleting game:", err)
-					}
-				}
-			}
-		}(conn, g, player.Id)
-
-		g, player, err = state.JoinOrNewGame(token, playerName)
+		g, player, err := state.JoinOrNewGame(token, playerName)
 		if err != nil {
 			log.Println("error joining game:", err)
-			ctx, cancel := context.WithTimeout(r.Context(), time.Second*10)
-			defer cancel()
-			writeErr := conn.Write(ctx, websocket.MessageText, []byte("error joining game: "+err.Error()))
+			writeErr := sendJSONWithTimeout(ctx, conn, game.NewErrorMsg("error joining game: "+err.Error()), 10*time.Second)
 			if writeErr != nil {
 				log.Println("error writing error to websocket:", writeErr)
 			}
 			return
 		}
+		connState.game = g
+		connState.playerId = player.Id
 
 		// send joined game details to the client
-		err = (func(token string, playerId game.PlayerId, state *game.State) error {
-			msg := game.NewJoinedGameMsg(token, playerId, state)
-			return sendJSON(r.Context(), conn, msg)
-		})(token, player.Id, g.State())
+		msg := game.NewJoinedGameMsg(token, connState.playerId, g.State())
+		err = sendJSONWithTimeout(ctx, conn, msg, 10*time.Second)
 		if err != nil {
-			log.Println("error writing joined game msg:", err)
+			log.Println(g.Id(), ": error sending joined game JSON:", err)
 			return
 		}
 
-		// select loop to handle messages from client and state changes from game
-		(func(game_ game.Game, playerId game.PlayerId, c *websocket.Conn) {
-			incomingMsgs := make(chan []byte, 1)
-			fatalSocketErr := make(chan error)
+		go readFromWebsocket(conn, incomingMsgs, fatalSocketErr)
 
-			go (func(c *websocket.Conn, incomingMsgs chan []byte, fatalSocketErr chan error) {
-				for {
-					_, msg, err := c.Read(context.Background())
-					if err != nil {
-						fatalSocketErr <- err
-						return
-					}
-					incomingMsgs <- msg
+		for {
+			var decodedMsg game.FromBrowser
+
+			select {
+			case newGameState := <-g.StateChanges():
+				log.Printf(g.Id(), ": game state changed, informing player id ", connState.playerId, ": %+v", newGameState)
+				if err := sendJSONWithTimeout(r.Context(), conn, game.NewGameStateMsg(newGameState), 10*time.Second); err != nil {
+					fatalSocketErr <- err
 				}
-			})(c, incomingMsgs, fatalSocketErr)
-
-			for {
-				var gameState *game.State
-				var msg []byte
-				var decodedMsg game.FromBrowser
-				var fatalErr error
-
-				select {
-				case <-r.Context().Done():
-					// TODO: not sure if this context is meaningful
-					log.Println("request context done")
-					return
-				case gameState = <-game_.StateChanges():
-					log.Printf("state change: %+v", gameState)
-					if err := sendJSON(r.Context(), c, game.NewGameStateMsg(gameState)); err != nil {
-						log.Println("error sending state change:", err)
-						return
-					}
-				case msg = <-incomingMsgs:
-					log.Println("incoming msg:", string(msg))
-					if err := json.NewDecoder(bytes.NewReader(msg)).Decode(&decodedMsg); err != nil {
-						log.Println("error decoding msg:", err)
-					}
+			case msg := <-incomingMsgs:
+				log.Println("incoming socket msg:", string(msg))
+				decodeErr := json.NewDecoder(bytes.NewReader(msg)).Decode(&decodedMsg)
+				if decodeErr != nil {
+					fatalSocketErr <- decodeErr
+				} else {
 					log.Printf("decoded msg: %+v", decodedMsg)
-					if err := game_.HandleMsg(playerId, decodedMsg); err != nil {
+					g.Lock()
+					err := g.HandleMsg(connState.playerId, decodedMsg)
+					g.BroadcastState()
+					g.Unlock()
+					if err != nil {
 						log.Println("error handling msg:", err)
-						err := sendJSON(r.Context(), c, game.NewErrorMsg(err.Error()))
+						err := sendJSON(r.Context(), conn, game.NewErrorMsg(err.Error()))
 						if err != nil {
-							log.Println("error sending error msg:", err)
-							return
+							fatalSocketErr <- err
 						}
 					}
-					game_.BroadcastState()
-
-				case fatalErr = <-fatalSocketErr:
-					log.Println("fatal socket error:", fatalErr)
-					return
 				}
+
+			case fatalErr := <-fatalSocketErr:
+				log.Println("fatal socket error:", fatalErr)
+				return
 			}
-		})(g, player.Id, conn)
+		}
+	}
+}
+
+func readFromWebsocket(c *websocket.Conn, incomingMsgs chan []byte, fatalSocketErr chan error) {
+	for {
+		_, msg, err := c.Read(context.Background())
+		if err != nil {
+			fatalSocketErr <- err
+			return
+		}
+		incomingMsgs <- msg
+	}
+}
+
+func disconnect(c *websocket.Conn, serverState server.State, connState *connectionState) {
+	log.Println("closing websocket conn for playerId:", connState.playerId)
+
+	err := c.Close(websocket.StatusNormalClosure, "defer termination")
+	if err != nil && !strings.Contains(err.Error(), "already wrote close") {
+		// totally fine if conn is already closed normally, otherwise log error
+		log.Println("error closing conn in deferred:", err)
+	}
+
+	if connState.game != nil {
+		log.Println("removing player from game id:", connState.game.Id())
+		connState.game.Lock()
+		defer connState.game.Unlock()
+
+		if connState.playerId > 0 {
+			log.Println("removing player:", connState.playerId)
+			err = connState.game.RemovePlayer(connState.playerId)
+			if err != nil {
+				log.Println("error removing player:", err)
+			}
+		}
+
+		if connState.game.IsEmpty() {
+			log.Println("deleting game id:", connState.game.Id())
+			err = serverState.DeleteGame(connState.game.Id())
+			if err != nil {
+				log.Println("error deleting game:", err)
+			}
+		}
 	}
 }
 
@@ -210,63 +230,8 @@ func sendJSON(ctx context.Context, conn *websocket.Conn, v interface{}) error {
 	return conn.Write(ctx, websocket.MessageText, buf.Bytes())
 }
 
-type serverState struct {
-	games map[string]game.Game
-	mutex sync.Mutex
-}
-
-func (s *serverState) JoinOrNewGame(id string, playerName string) (game.Game, game.Player, error) {
-	id = strings.TrimSpace(id)
-	if id == "" {
-		return nil, game.Player{}, errors.New("id must not be empty")
-	}
-
-	playerName = strings.TrimSpace(playerName)
-	if playerName == "" {
-		playerName = "Unnamed Player"
-	}
-
-	var player game.Player
-	game_, err := (func(s *serverState) (game.Game, error) {
-		s.mutex.Lock()
-		defer s.mutex.Unlock()
-
-		existing, ok := s.games[id]
-		if ok {
-			return existing, nil
-		}
-
-		game_, err := game.NewGame(id)
-		if err != nil {
-			return nil, err
-		}
-		s.games[id] = game_
-		return game_, nil
-	})(s)
-	if err != nil {
-		return nil, player, err
-	}
-
-	game_.Lock()
-	defer game_.Unlock()
-
-	player, err = game_.AddPlayer(playerName)
-	if err != nil {
-		return nil, player, err
-	}
-
-	return game_, player, nil
-}
-
-func (s *serverState) DeleteGame(id string) error {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
-	_, ok := s.games[id]
-	if !ok {
-		return errors.New("game not found")
-	}
-
-	delete(s.games, id)
-	return nil
+func sendJSONWithTimeout(ctx context.Context, conn *websocket.Conn, v interface{}, timeout time.Duration) error {
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+	return sendJSON(ctx, conn, v)
 }

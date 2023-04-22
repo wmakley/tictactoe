@@ -80,7 +80,6 @@ func (g *game) AddPlayer(name string) (Player, error) {
 	}
 	g.state.Players = append(g.state.Players, player)
 	g.addChatMessage(systemSource(), player.String()+" has joined the game!")
-	g.BroadcastState()
 	return player, nil
 }
 

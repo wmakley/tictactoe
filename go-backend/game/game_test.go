@@ -19,7 +19,7 @@ func TestGame_AddPlayer(t *testing.T) {
 	require.NotNil(t, player)
 
 	require.Equal(t, "test", player.Name)
-	require.Equal(t, PlayerId(0), player.Id)
+	require.Equal(t, PlayerId(1), player.Id)
 	require.Equal(t, 1, len(game.State().Players))
 	require.Equal(t, TeamX, game.State().Players[0].Team)
 	require.Equal(t, TeamX, player.Team)
@@ -35,7 +35,7 @@ func TestGame_AddPlayer(t *testing.T) {
 	require.NotNil(t, player2)
 
 	require.Equal(t, "test2", player2.Name)
-	require.Equal(t, PlayerId(1), player2.Id)
+	require.Equal(t, PlayerId(2), player2.Id)
 	require.Equal(t, 2, len(game.State().Players))
 	require.Equal(t, TeamO, game.State().Players[1].Team)
 	require.Equal(t, TeamO, player2.Team)
