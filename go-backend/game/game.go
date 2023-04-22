@@ -182,6 +182,7 @@ func (g *game) takeTurn(playerId PlayerId, space int) error {
 			Winner: winner,
 			Draw:   false,
 		}
+		g.addChatMessage(systemSource(), fmt.Sprintf("%s wins!", player.String()))
 
 	} else if g.checkDraw() {
 		g.state.Winner = EndState{
