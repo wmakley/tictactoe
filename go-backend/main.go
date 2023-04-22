@@ -85,7 +85,7 @@ func websocketHandler(state server.State) http.HandlerFunc {
 
 		ctx := context.Background()
 		incomingMsgs := make(chan []byte, 1)
-		fatalSocketErr := make(chan error)
+		fatalSocketErr := make(chan error, 1)
 
 		connState := connectionState{
 			game:     nil,
