@@ -11,26 +11,18 @@ type State interface {
 	sync.Locker
 	JoinOrNewGame(id string, playerName string) (game.Game, game.Player, error)
 	DeleteGame(id string) error
-	Disconnects() chan Disconnect
-}
-
-type Disconnect struct {
-	GameId   string
-	PlayerId game.PlayerId
 }
 
 func NewState() State {
 	return &serverState{
-		games:       make(map[string]game.Game),
-		mutex:       sync.Mutex{},
-		disconnects: make(chan Disconnect, 100),
+		games: make(map[string]game.Game),
+		mutex: sync.Mutex{},
 	}
 }
 
 type serverState struct {
-	games       map[string]game.Game
-	mutex       sync.Mutex
-	disconnects chan Disconnect
+	games map[string]game.Game
+	mutex sync.Mutex
 }
 
 func (s *serverState) Lock() {
@@ -96,8 +88,4 @@ func (s *serverState) DeleteGame(id string) error {
 
 	delete(s.games, id)
 	return nil
-}
-
-func (s *serverState) Disconnects() chan Disconnect {
-	return s.disconnects
 }
