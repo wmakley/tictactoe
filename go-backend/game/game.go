@@ -244,7 +244,9 @@ func (g *game) reset() {
 	}
 	g.state.Turn = TeamX
 	g.state.Winner = EndState{
-		Done: false,
+		Done:   false,
+		Winner: TeamNone,
+		Draw:   false,
 	}
 }
 
