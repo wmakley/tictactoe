@@ -7,6 +7,7 @@ import (
 	"go-backend/game"
 	"go-backend/server"
 	"log"
+	"math/rand"
 	"net/http"
 	"nhooyr.io/websocket"
 	"strings"
@@ -197,7 +198,17 @@ func disconnect(c *websocket.Conn, serverState server.State, connState *connecti
 }
 
 func randomToken() string {
-	return "TODO"
+	return randStringRunes(5)
+}
+
+var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+
+func randStringRunes(n int) string {
+	b := make([]rune, n)
+	for i := range b {
+		b[i] = letterRunes[rand.Intn(len(letterRunes))]
+	}
+	return string(b)
 }
 
 func sendJSON(ctx context.Context, conn *websocket.Conn, v interface{}) error {
