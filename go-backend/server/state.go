@@ -3,6 +3,7 @@ package server
 import (
 	"errors"
 	"go-backend/game"
+	"log"
 	"strings"
 	"sync"
 )
@@ -10,19 +11,22 @@ import (
 type State interface {
 	sync.Locker
 	JoinOrNewGame(id string, playerName string) (game.Game, game.Player, error)
-	DeleteGame(id string) error
+	StartCleanup()
+	EmptyGames() chan string
 }
 
 func NewState() State {
 	return &serverState{
-		games: make(map[string]game.Game),
-		mutex: sync.Mutex{},
+		games:      make(map[string]game.Game),
+		mutex:      sync.Mutex{},
+		emptyGames: make(chan string, 10),
 	}
 }
 
 type serverState struct {
-	games map[string]game.Game
-	mutex sync.Mutex
+	games      map[string]game.Game
+	mutex      sync.Mutex
+	emptyGames chan string
 }
 
 func (s *serverState) Lock() {
@@ -76,7 +80,22 @@ func (s *serverState) JoinOrNewGame(id string, playerName string) (game.Game, ga
 	return game_, player, nil
 }
 
-func (s *serverState) DeleteGame(id string) error {
+func (s *serverState) EmptyGames() chan string {
+	return s.emptyGames
+}
+
+func (s *serverState) StartCleanup() {
+	go func() {
+		for id := range s.emptyGames {
+			log.Println("deleting game:", id)
+			if err := s.deleteGame(id); err != nil {
+				log.Println("error deleting game:", err)
+			}
+		}
+	}()
+}
+
+func (s *serverState) deleteGame(id string) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 

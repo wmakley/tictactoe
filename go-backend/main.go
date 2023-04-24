@@ -15,6 +15,7 @@ import (
 
 func main() {
 	state := server.NewState()
+	state.StartCleanup()
 
 	mux := http.NewServeMux()
 	mux.Handle("/", getOptionsHandler())
@@ -123,13 +124,15 @@ func websocketHandler(state server.State) http.HandlerFunc {
 			case newGameState := <-g.StateChanges():
 				log.Printf(g.Id(), ": game state changed, informing player id ", connState.playerId, ": %+v", newGameState)
 				if err := sendJSONWithTimeout(r.Context(), conn, game.NewGameStateMsg(newGameState), 10*time.Second); err != nil {
-					fatalSocketErr <- err
+					log.Println(g.Id(), ": fatal error sending game state JSON:", err)
+					return
 				}
 			case msg := <-incomingMsgs:
 				log.Println("incoming socket msg:", string(msg))
 				decodeErr := json.NewDecoder(bytes.NewReader(msg)).Decode(&decodedMsg)
 				if decodeErr != nil {
-					fatalSocketErr <- decodeErr
+					log.Println(g.Id(), "fatal error decoding msg:", decodeErr)
+					return
 				} else {
 					log.Printf("decoded msg: %+v", decodedMsg)
 					g.Lock()
@@ -140,7 +143,8 @@ func websocketHandler(state server.State) http.HandlerFunc {
 						log.Println("error handling msg:", err)
 						err := sendJSON(r.Context(), conn, game.NewErrorMsg(err.Error()))
 						if err != nil {
-							fatalSocketErr <- err
+							log.Println("error writing error to websocket:", err)
+							return
 						}
 					}
 				}
@@ -187,11 +191,7 @@ func disconnect(c *websocket.Conn, serverState server.State, connState *connecti
 		}
 
 		if connState.game.IsEmpty() {
-			log.Println("deleting game id:", connState.game.Id())
-			err = serverState.DeleteGame(connState.game.Id())
-			if err != nil {
-				log.Println("error deleting game:", err)
-			}
+			serverState.EmptyGames() <- connState.game.Id()
 		}
 	}
 }
