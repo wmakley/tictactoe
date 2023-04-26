@@ -1,12 +1,6 @@
 lockfileVersion: '6.0'
 
 devDependencies:
-  '@sveltejs/adapter-auto':
-    specifier: ^2.0.0
-    version: 2.0.0(@sveltejs/kit@1.15.0)
-  '@sveltejs/adapter-static':
-    specifier: ^2.0.1
-    version: 2.0.1(@sveltejs/kit@1.15.0)
   '@sveltejs/adapter-vercel':
     specifier: ^2.4.2
     version: 2.4.2(@sveltejs/kit@1.15.0)
@@ -561,23 +555,6 @@ packages:
     dependencies:
       estree-walker: 2.0.2
       picomatch: 2.3.1
-    dev: true
-
-  /@sveltejs/adapter-auto@2.0.0(@sveltejs/kit@1.15.0):
-    resolution: {integrity: sha512-b+gkHFZgD771kgV3aO4avHFd7y1zhmMYy9i6xOK7m/rwmwaRO8gnF5zBc0Rgca80B2PMU1bKNxyBTHA14OzUAQ==}
-    peerDependencies:
-      '@sveltejs/kit': ^1.0.0
-    dependencies:
-      '@sveltejs/kit': 1.15.0(svelte@3.58.0)(vite@4.2.1)
-      import-meta-resolve: 2.2.2
-    dev: true
-
-  /@sveltejs/adapter-static@2.0.1(@sveltejs/kit@1.15.0):
-    resolution: {integrity: sha512-o5/q3YwD/ErxYCFlK1v3ydvldyNKk1lh3oeyxn4mhz+Pkbx/uuxhzmbOpytTlp5aVqNHDVsb04xadUzOFCDDzw==}
-    peerDependencies:
-      '@sveltejs/kit': ^1.5.0
-    dependencies:
-      '@sveltejs/kit': 1.15.0(svelte@3.58.0)(vite@4.2.1)
     dev: true
 
   /@sveltejs/adapter-vercel@2.4.2(@sveltejs/kit@1.15.0):
@@ -1453,10 +1430,6 @@ packages:
     dependencies:
       parent-module: 1.0.1
       resolve-from: 4.0.0
-    dev: true
-
-  /import-meta-resolve@2.2.2:
-    resolution: {integrity: sha512-f8KcQ1D80V7RnqVm+/lirO9zkOxjGxhaTC1IPrBGd3MEfNgmNG67tSUO9gTi2F3Blr2Az6g1vocaxzkVnWl9MA==}
     dev: true
 
   /imurmurhash@0.1.4:
