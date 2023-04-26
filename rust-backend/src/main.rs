@@ -13,7 +13,6 @@ use axum::{
     Router,
 };
 use rand::{distributions::Alphanumeric, Rng};
-// use redis::aio::ConnectionManager;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
@@ -44,14 +43,8 @@ impl Display for AppState {
 async fn main() {
     tracing_subscriber::fmt::init();
 
-    // let redis_address = std::env::var("REDIS_ADDRESS").unwrap();
-    // let client = redis::Client::open(redis_address).unwrap();
-    // let redis_conn_mgr = client.get_tokio_connection_manager().await.unwrap();
-
     let shared_state = Arc::new(AppState {
-        // redis_conn_mgr: redis_conn_mgr,
         games: Arc::new(Mutex::new(HashMap::new())),
-        // sockets: Vec::new(),
     });
 
     let app = Router::new()
