@@ -16,7 +16,7 @@ use rand::{distributions::Alphanumeric, Rng};
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, RwLock};
 use tokio::sync::watch::Receiver;
 use tokio::time::{sleep, Duration};
 use tower_http::trace::TraceLayer;
@@ -26,7 +26,7 @@ use tracing_subscriber;
 #[derive(Debug)]
 struct AppState {
     // pub redis_conn_mgr: ConnectionManager,
-    pub games: Arc<Mutex<HashMap<String, Arc<Mutex<Game>>>>>,
+    pub games: Arc<RwLock<HashMap<String, Arc<Mutex<Game>>>>>,
 }
 
 impl Display for AppState {
@@ -34,7 +34,7 @@ impl Display for AppState {
         write!(
             f,
             "AppState(GameCount: {})",
-            self.games.lock().unwrap().len()
+            self.games.read().unwrap().len()
         )
     }
 }
@@ -44,7 +44,7 @@ async fn main() {
     tracing_subscriber::fmt::init();
 
     let shared_state = Arc::new(AppState {
-        games: Arc::new(Mutex::new(HashMap::new())),
+        games: Arc::new(RwLock::new(HashMap::new())),
     });
 
     let app = Router::new()
@@ -127,7 +127,7 @@ async fn handle_socket(mut socket: WebSocket, params: NewGameParams, state: Arc<
         .clone()
         .and_then(|token| {
             // if we have a token, try to get the game matching the token
-            let games = state.games.lock().unwrap();
+            let games = state.games.read().unwrap();
             games.get(&token).map(|g| g.clone())
         })
         .unwrap_or_else(|| {
@@ -140,7 +140,7 @@ async fn handle_socket(mut socket: WebSocket, params: NewGameParams, state: Arc<
 
             let game = Arc::new(Mutex::new(game));
 
-            state.games.lock().unwrap().insert(id, game.clone());
+            state.games.write().unwrap().insert(id, game.clone());
             game
         });
 
@@ -194,7 +194,7 @@ async fn handle_socket(mut socket: WebSocket, params: NewGameParams, state: Arc<
         game.remove_player(player.id);
         if game.state.players.is_empty() {
             debug!("Socket: Game is empty, removing globally");
-            state.games.lock().unwrap().remove(&game.id);
+            state.games.write().unwrap().remove(&game.id);
         }
         game.broadcast_state();
     };
