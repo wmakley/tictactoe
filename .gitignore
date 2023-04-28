@@ -1,5 +1,4 @@
 rust-backend/target
-rust-backend/static
 node_modules
 .svelte-kit
 build
