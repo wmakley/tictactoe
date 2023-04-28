@@ -6,4 +6,7 @@ go-backend: $(SRCS) $(MOD)
 clean:
 	rm go-backend
 
-.PHONY: clean
+dev:
+	go run .
+
+.PHONY: clean dev

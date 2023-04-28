@@ -1,37 +1,25 @@
-# tictactoe-rs
+# Websocket Tic-Tac-Toe Rust Backend
 
-Tic-Tac-Toe Rust and Svelte websockets experiment.
+The OG. Uses Axum, Tokio, and some standard library stuff.
 
-## Backend Setup
+Original version included static file server for frontend, but I am now ripping that out and implementing CORS.
 
-As a pre-requisite to compile and run only the server, you must have rust and
-cargo installed.
+TODO: Finish implementing CORS.
+
+## Development Server
+
+You must have rust and cargo installed, presumably using "rustup".
 
 ```sh
 RUST_LOG="info,tictactoe_rs=trace,tower_http=trace" cargo run
 ```
 
-Open http://localhost:3000/ in a browser. It should just work! But assets will
-not be compiled on the fly. To compile assets, simply run:
+It will listen on port 3000.
+
+## Production Build
 
 ```sh
-make js
+make docker-image
 ```
 
-## Frontend Development
-
-| Tool | Version |
-| ---- | ------- |
-| node | 18.15.0 |
-| pnpm | 8.1.0 |
-
-Recommend installing using ASDF: https://asdf-vm.com/
-
-```sh
-cd svelte
-pnpm install
-pnpm run dev
-```
-
-Open http://localhost:5173/ instead. (The server must still be running on
-port 3000 for it to work.)
+Or deploy to fly.io.

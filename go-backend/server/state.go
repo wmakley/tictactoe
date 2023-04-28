@@ -9,7 +9,6 @@ import (
 )
 
 type State interface {
-	sync.Locker
 	JoinOrNewGame(id string, playerName string) (game.Game, game.Player, error)
 	StartCleanup()
 	EmptyGames() chan string
@@ -29,13 +28,14 @@ type serverState struct {
 	emptyGames chan string
 }
 
-func (s *serverState) Lock() {
-	s.mutex.Lock()
-}
-
-func (s *serverState) Unlock() {
-	s.mutex.Unlock()
-}
+// allowing users to lock/unlock is not part of the interface
+//func (s *serverState) Lock() {
+//	s.mutex.Lock()
+//}
+//
+//func (s *serverState) Unlock() {
+//	s.mutex.Unlock()
+//}
 
 func (s *serverState) JoinOrNewGame(id string, playerName string) (game.Game, game.Player, error) {
 	id = strings.TrimSpace(id)
