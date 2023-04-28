@@ -13,8 +13,6 @@ Communication with backend requires CORS to be setup.
 | node | 18.15.0 |
 | pnpm | 8.3.1 |
 
-Requires pnpm.
-
 ```sh
 pnpm install
 pnpm run dev

@@ -1,5 +1,4 @@
 mod game;
-mod site;
 
 use crate::game::Game;
 use axum::{
@@ -8,8 +7,8 @@ use axum::{
         Query, State,
     },
     http::StatusCode,
-    response::{IntoResponse, Response},
-    routing::get,
+    response::{IntoResponse, Redirect, Response},
+    routing::{get, MethodFilter},
     Router,
 };
 use rand::{distributions::Alphanumeric, Rng};
@@ -25,7 +24,7 @@ use tracing_subscriber;
 
 #[derive(Debug)]
 struct AppState {
-    // pub redis_conn_mgr: ConnectionManager,
+    pub frontend_url: String,
     pub games: Arc<RwLock<HashMap<String, Arc<Mutex<Game>>>>>,
 }
 
@@ -43,25 +42,50 @@ impl Display for AppState {
 async fn main() {
     tracing_subscriber::fmt::init();
 
+    let frontend_url =
+        std::env::var("FRONTEND_URL").unwrap_or_else(|_| "http://localhost:5173/".to_string());
+    let port = std::env::var("PORT").unwrap_or_else(|_| "3000".to_string());
+
     let shared_state = Arc::new(AppState {
+        frontend_url: frontend_url,
         games: Arc::new(RwLock::new(HashMap::new())),
     });
 
     let app = Router::new()
-        .route("/", get(site::index))
+        .route(
+            "/",
+            get(redirect_to_frontend).on(MethodFilter::OPTIONS, cors_options),
+        )
         .route("/ws", get(open_conn))
         .route("/health", get(|| async { StatusCode::OK }))
-        .fallback(get(site::static_file_server))
+        .route("/robots.txt", get(robots_txt))
+        .fallback(get(redirect_to_frontend))
         .with_state(shared_state)
         .layer(TraceLayer::new_for_http());
 
-    let addr = "0.0.0.0:3000";
+    let addr = format!("0.0.0.0:{}", port);
     println!("Listening on {}, set RUST_LOG=\"info,tictactoe_rs=trace,tower_http=trace\" to see detailed logs.", addr);
 
     axum::Server::bind(&addr.parse().unwrap())
         .serve(app.into_make_service())
         .await
         .unwrap();
+}
+
+async fn redirect_to_frontend(State(state): State<Arc<AppState>>) -> Redirect {
+    Redirect::temporary(&state.frontend_url.as_str())
+}
+
+async fn cors_options(State(state): State<Arc<AppState>>) -> Response {
+    (
+        StatusCode::OK,
+        format!("Access-Control-Allow-Origin: {}\nAccess-Control-Allow-Methods: GET, OPTIONS\nAccess-Control-Allow-Headers: Content-Type\n", &state.frontend_url),
+    )
+        .into_response()
+}
+
+async fn robots_txt() -> (StatusCode, &'static str) {
+    (StatusCode::OK, "User-agent: *\nDisallow: /\n")
 }
 
 #[derive(Debug, Deserialize)]
