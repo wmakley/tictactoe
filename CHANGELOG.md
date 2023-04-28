@@ -7,7 +7,8 @@
 ### Go Backend
 * Remove "sync.Locker" interface from go backend server state interface.
 * Add OPTIONS, robots.txt, and frontend redirect support.
-* WIP add Dockerfile.
+* Add Dockerfile.
+* Deploy to fly.io.
 
 ### Rust Backend
 * Remove static file server.

@@ -25,4 +25,6 @@ EXPOSE 3000
 
 USER nonroot:nonroot
 
+ENV FRONTEND_URL "https://svelte-frontend-mu.vercel.app/"
+
 ENTRYPOINT ["/tictactoe"]
