@@ -6,6 +6,7 @@
 
 ### Go Backend
 * Remove "sync.Locker" interface from go backend server state interface.
+* Add OPTIONS, robots.txt, and frontend redirect support.
 
 ### Rust Backend
 * Remove static file server.

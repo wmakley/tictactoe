@@ -11,4 +11,4 @@ main
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vercel
-go-backend
+go-backend/go-backend

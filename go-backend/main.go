@@ -4,43 +4,99 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"go-backend/game"
 	"go-backend/server"
 	"log"
 	"math/rand"
 	"net/http"
 	"nhooyr.io/websocket"
+	"os"
 	"strings"
 	"time"
 )
 
 func main() {
+	frontendUrl := os.Getenv("FRONTEND_URL")
+	if frontendUrl == "" {
+		frontendUrl = "http://localhost:5173"
+	}
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "3000"
+	}
+
 	state := server.NewState()
 	state.StartCleanup()
 
 	mux := http.NewServeMux()
-	mux.Handle("/", getOptionsHandler())
+	mux.Handle("/", rootHandler(frontendUrl))
+	mux.Handle("/health", healthCheckHandler())
+	mux.Handle("/robots.txt", robotsTxtHandler())
 	mux.Handle("/ws", websocketHandler(state))
 
-	err := http.ListenAndServe(":3000", mux)
+	addr := fmt.Sprintf("0.0.0.0:%s", port)
+	log.Println("listening on", addr)
+
+	err := http.ListenAndServe(addr, mux)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 }
 
-func getOptionsHandler() http.HandlerFunc {
+func rootHandler(frontendUrl string) http.HandlerFunc {
+	index := redirectToFrontendHandler(frontendUrl)
+	options := getOptionsHandler(frontendUrl)
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet {
+			index(w, r)
+			return
+		}
+
+		if r.Method == http.MethodOptions {
+			options(w, r)
+			return
+		}
+
+		w.WriteHeader(http.StatusNotFound)
+	}
+}
+
+func redirectToFrontendHandler(frontendUrl string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, frontendUrl, http.StatusFound)
+	}
+}
+
+func getOptionsHandler(frontendUrl string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodOptions {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
 
-		// TODO: not sure if correct
-		w.Header().Set("Access-Control-Allow-Origin", "http://localhost:5173")
+		w.Header().Set("Access-Control-Allow-Origin", frontendUrl)
 		w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-		w.Header().Set("Access-Control-Max-Age", "60")
+		//w.Header().Set("Access-Control-Max-Age", "60")
 		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+func healthCheckHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}
+}
+
+func robotsTxtHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain")
+		_, err := w.Write([]byte("User-agent: *\nDisallow: /\n"))
+		if err != nil {
+			log.Println("error writing robots.txt:", err)
+		}
 	}
 }
 
