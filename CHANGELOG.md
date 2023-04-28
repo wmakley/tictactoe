@@ -7,9 +7,11 @@
 ### Go Backend
 * Remove "sync.Locker" interface from go backend server state interface.
 * Add OPTIONS, robots.txt, and frontend redirect support.
+* WIP add Dockerfile.
 
 ### Rust Backend
 * Remove static file server.
 * Add CORS support.
 * Add support for redirecting to FRONTEND_URL.
 * Setup fly.io config to deploy as a new app.
+* Upgrade to Fly V2
