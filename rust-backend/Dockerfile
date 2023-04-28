@@ -18,4 +18,6 @@ COPY --from=builder /usr/local/cargo/bin/tictactoe-rs /usr/local/bin/tictactoe-r
 WORKDIR /app
 CMD ["tictactoe-rs"]
 EXPOSE 3000
+
 ENV RUST_LOG "info,tictactoe_rs=trace,tower_http=trace"
+ENV FRONTEND_URL "https://svelte-frontend-mu.vercel.app/"

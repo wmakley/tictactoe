@@ -11,3 +11,4 @@
 * Remove static file server.
 * Add CORS support.
 * Add support for redirecting to FRONTEND_URL.
+* Setup fly.io config to deploy as a new app.
