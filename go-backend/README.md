@@ -10,8 +10,8 @@ make dev
 
 ## Production Build
 
-TODO
-
 ```sh
 make
 ```
+
+Or build the Docker image.
