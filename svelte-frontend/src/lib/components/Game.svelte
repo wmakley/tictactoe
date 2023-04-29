@@ -1,5 +1,4 @@
 <script lang="ts">
-    // TODO: don't clear token on disconnect
     import { onMount, afterUpdate } from "svelte";
 
     // https://natclark.com/tutorials/svelte-get-current-url/
