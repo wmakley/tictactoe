@@ -1,19 +1,14 @@
 <script lang="ts">
+    export let backendUrl = "";
+
     import { onMount, afterUpdate } from "svelte";
 
     // https://natclark.com/tutorials/svelte-get-current-url/
     let url: URL | null = null;
-    let socketUrl = "";
     let joinToken = "";
 
     onMount(() => {
         url = new URL(window.location.href);
-        const socketProtocol = url.protocol === "https:" ? "wss://" : "ws://";
-        socketUrl = `${socketProtocol}${url.host}/ws`;
-
-        // Hack to get around the fact that the server is running on a different
-        // port in development.
-        socketUrl = socketUrl.replace("5173", "3000");
 
         playerName = localStorage.getItem("playerName") || "";
         console.debug("playerName", playerName);
@@ -32,6 +27,13 @@
             joinGame();
         }
     });
+    function socketUrl(): string {
+        if (!url) {
+            return "";
+        }
+        const socketProtocol = url.protocol === "https:" ? "wss://" : "ws://";
+        return `${socketProtocol}${backendUrl}/ws`;
+    }
 
     afterUpdate(() => {
         const chat = document.getElementById("chat-messages");
@@ -97,7 +99,7 @@
             joinToken
         );
 
-        const url = new URL(socketUrl);
+        const url = new URL(socketUrl());
         url.searchParams.set("token", joinToken);
         url.searchParams.set("name", playerName);
 

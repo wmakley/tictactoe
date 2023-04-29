@@ -16,3 +16,6 @@
 * Add support for redirecting to FRONTEND_URL.
 * Setup fly.io config to deploy as a new app.
 * Upgrade to Fly V2
+
+### Svelte Frontend
+* Allow user to pick a backend via dropdown.
