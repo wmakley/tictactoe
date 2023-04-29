@@ -24,7 +24,12 @@ pnpm run dev
 pnpm run build
 ```
 
-## TODO:
+## Deployment
 
-* Implement ability to switch backends.
-* Add CORS support to backends.
+Deployment of this repo is automatic from git, but for personal use, you can
+deploy manually with:
+
+```sh
+pnpm -g install vercel
+vercel
+```
