@@ -1,4 +1,13 @@
-# ElixirBackend
+# Elixir Backend
+
+The Elixir backend simply uses Phoenix, as I don't have enough experience to
+wire together the lower level libraries myself for all the web stuff in Elixir
+(although I would absolutely love to, and that might be a project for another
+day).
+
+This backend is unfinished.
+
+## Phoenix Boilerplate
 
 To start your Phoenix server:
 
