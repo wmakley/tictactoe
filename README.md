@@ -5,6 +5,8 @@ For educational and fun purposes learning concurrent programming in multiple lan
 
 Each project contains a README with specific information about that project.
 
+**Try it out:** https://tictactoe-rs.willmakley.dev/
+
 ## Current Frontends:
 
 * Svelte (on Vercel)
@@ -12,4 +14,6 @@ Each project contains a README with specific information about that project.
 ## Current Backends:
 
 * Rust (on fly.io)
-* Go (TODO)
+* Go (on fly.io)
+
+Backends may be switched on the fly!
