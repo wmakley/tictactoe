@@ -8,12 +8,14 @@
     class="game-square {disabled
         ? 'disabled'
         : 'enabled'} {value.toLowerCase()}"
-    on:click={onClick}
-    on:keyup={(e) => {
-        if (e.key === "Enter") {
-            onClick();
-        }
-    }}
+    on:click={disabled ? null : onClick}
+    on:keyup={disabled
+        ? null
+        : (e) => {
+              if (e.key === "Enter") {
+                  onClick();
+              }
+          }}
 >
     {value}
 </div>
