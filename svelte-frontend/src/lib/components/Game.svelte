@@ -2,6 +2,7 @@
     export let backendUrl = "";
 
     import { onMount, afterUpdate } from "svelte";
+    import Square from "./Square.svelte";
 
     // https://natclark.com/tutorials/svelte-get-current-url/
     let url: URL | null = null;
@@ -308,17 +309,14 @@
         <div class="column">
             <div class="game-board">
                 {#each gameState.board as square, i}
-                    <button
-                        type="button"
-                        class="game-square {square}"
+                    <Square
+                        value={square}
                         disabled={!enoughPlayers ||
                             gameState.winner !== null ||
                             gameState.turn !== me.team ||
                             square !== " "}
-                        on:click={() => sendMove(i)}
-                    >
-                        {square}
-                    </button>
+                        onClick={() => sendMove(i)}
+                    />
                 {/each}
             </div>
         </div>

@@ -2,7 +2,13 @@
 
 ## 2023-04-30
 
+### Svelte Frontend
+* Slightly improve appearance of game board.
+
+### Go Backend
 * Add Max-Age 3600 header to go backend CORS OPTIONS handler.
+
+### Rust Backend
 * Rust backend OPTIONS handler now returns headers instead of body.
 
 ## 2023-04-28
