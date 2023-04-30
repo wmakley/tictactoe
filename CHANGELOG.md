@@ -4,6 +4,7 @@
 
 ### Svelte Frontend
 * Slightly improve appearance of game board.
+* Add Makefile.
 
 ### Go Backend
 * Add Max-Age 3600 header to go backend CORS OPTIONS handler.
