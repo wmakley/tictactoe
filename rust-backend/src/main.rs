@@ -76,12 +76,16 @@ async fn redirect_to_frontend(State(state): State<Arc<AppState>>) -> Redirect {
     Redirect::temporary(&state.frontend_url.as_str())
 }
 
-async fn cors_options(State(state): State<Arc<AppState>>) -> Response {
+async fn cors_options(State(state): State<Arc<AppState>>) -> impl IntoResponse {
     (
-        StatusCode::OK,
-        format!("Access-Control-Allow-Origin: {}\nAccess-Control-Allow-Methods: GET, OPTIONS\nAccess-Control-Allow-Headers: Content-Type\n", &state.frontend_url),
+        StatusCode::NO_CONTENT,
+        [
+            ("Access-Control-Allow-Origin", state.frontend_url.clone()),
+            ("Access-Control-Allow-Methods", String::from("GET, OPTIONS")),
+            ("Access-Control-Allow-Headers", String::from("Content-Type")),
+            ("Access-Control-Max-Age", String::from("3600")),
+        ],
     )
-        .into_response()
 }
 
 async fn robots_txt() -> (StatusCode, &'static str) {

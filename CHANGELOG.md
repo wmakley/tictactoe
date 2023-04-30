@@ -1,3 +1,10 @@
+# Changelog for all projects
+
+## 2023-04-30
+
+* Add Max-Age 3600 header to go backend CORS OPTIONS handler.
+* Rust backend OPTIONS handler now returns headers instead of body.
+
 ## 2023-04-28
 
 * Added README.md to root and subprojects.

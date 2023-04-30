@@ -79,7 +79,7 @@ func getOptionsHandler(frontendUrl string) http.HandlerFunc {
 		w.Header().Set("Access-Control-Allow-Origin", frontendUrl)
 		w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-		//w.Header().Set("Access-Control-Max-Age", "60")
+		w.Header().Set("Access-Control-Max-Age", "3600")
 		w.WriteHeader(http.StatusNoContent)
 	}
 }
