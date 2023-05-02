@@ -1,6 +1,6 @@
 mod game;
+mod server;
 
-use crate::game::Game;
 use axum::{
     extract::{
         ws::{Message, WebSocket, WebSocketUpgrade},
@@ -11,32 +11,13 @@ use axum::{
     routing::{get, MethodFilter},
     Router,
 };
-use rand::{distributions::Alphanumeric, Rng};
 use serde::Deserialize;
-use std::collections::HashMap;
-use std::fmt::{Display, Formatter};
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::Arc;
 use tokio::sync::watch::Receiver;
 use tokio::time::{sleep, Duration};
 use tower_http::trace::TraceLayer;
 use tracing::debug;
 use tracing_subscriber;
-
-#[derive(Debug)]
-struct AppState {
-    pub frontend_url: String,
-    pub games: Arc<RwLock<HashMap<String, Arc<Mutex<Game>>>>>,
-}
-
-impl Display for AppState {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "AppState(GameCount: {})",
-            self.games.read().unwrap().len()
-        )
-    }
-}
 
 #[tokio::main]
 async fn main() {
@@ -46,10 +27,7 @@ async fn main() {
         std::env::var("FRONTEND_URL").unwrap_or_else(|_| "http://localhost:5173/".to_string());
     let port = std::env::var("PORT").unwrap_or_else(|_| "3000".to_string());
 
-    let shared_state = Arc::new(AppState {
-        frontend_url: frontend_url,
-        games: Arc::new(RwLock::new(HashMap::new())),
-    });
+    let shared_state = Arc::new(server::State::new(frontend_url.clone()));
 
     let app = Router::new()
         .route(
@@ -72,11 +50,11 @@ async fn main() {
         .unwrap();
 }
 
-async fn redirect_to_frontend(State(state): State<Arc<AppState>>) -> Redirect {
+async fn redirect_to_frontend(State(state): State<Arc<server::State>>) -> Redirect {
     Redirect::temporary(&state.frontend_url.as_str())
 }
 
-async fn cors_options(State(state): State<Arc<AppState>>) -> impl IntoResponse {
+async fn cors_options(State(state): State<Arc<server::State>>) -> impl IntoResponse {
     (
         StatusCode::NO_CONTENT,
         [
@@ -128,7 +106,7 @@ impl NewGameParams {
 
 async fn open_conn(
     Query(params): Query<NewGameParams>,
-    State(state): State<Arc<AppState>>,
+    State(state): State<Arc<server::State>>,
     ws: WebSocketUpgrade,
 ) -> Response {
     let params = params.normalized();
@@ -139,60 +117,11 @@ async fn open_conn(
     ws.on_upgrade(|socket| handle_socket(socket, params, state))
 }
 
-struct JoinGameResult {
-    id: String,
-    player: game::Player,
-    game_state: game::State,
-    receive_from_game: Receiver<game::State>,
-}
-
-async fn handle_socket(mut socket: WebSocket, params: NewGameParams, state: Arc<AppState>) {
+async fn handle_socket(mut socket: WebSocket, params: NewGameParams, state: Arc<server::State>) {
     // let redis = state.redis_conn_mgr.clone();
     debug!("New WebSocket connection with params: '{:?}'", params);
 
-    let game: Arc<Mutex<Game>> = params
-        .token
-        .clone()
-        .and_then(|token| {
-            // if we have a token, try to get the game matching the token
-            let games = state.games.read().unwrap();
-            games.get(&token).map(|g| g.clone())
-        })
-        .unwrap_or_else(|| {
-            // if after that we still don't have a game, create a new one
-
-            let id: String = params.token.unwrap_or_else(|| random_token());
-            // TODO: when generating random token, check for collisions
-
-            let (game, _) = Game::new(id.clone());
-
-            let game = Arc::new(Mutex::new(game));
-
-            state.games.write().unwrap().insert(id, game.clone());
-            game
-        });
-
-    // now that we got a game, add the connected user as a player,
-    // extract some data from it and send state to client
-    let join_game_result: Result<JoinGameResult, String> = {
-        let mut game = game.lock().unwrap();
-
-        match game.add_player(params.name.unwrap_or_else(|| "Unnamed Player".to_string())) {
-            Ok(_player) => {
-                game.broadcast_state();
-
-                Ok(JoinGameResult {
-                    id: game.id.clone(),
-                    player: _player,
-                    game_state: game.state.clone(),
-                    receive_from_game: game.state_changes.subscribe(),
-                })
-            }
-            Err(e) => Err(e),
-        }
-    };
-
-    let join_game_result = match join_game_result {
+    let join_game_result = match state.join_or_new_game(params.token, params.name) {
         Ok(j) => j,
         Err(e) => {
             let json = serde_json::to_string(&game::ToBrowser::Error(e)).unwrap();
@@ -204,6 +133,7 @@ async fn handle_socket(mut socket: WebSocket, params: NewGameParams, state: Arc<
 
     let player = join_game_result.player;
     let mut receive_from_game = join_game_result.receive_from_game;
+    let game = join_game_result.game;
 
     let json = serde_json::to_string(&game::ToBrowser::JoinedGame {
         token: join_game_result.id,
@@ -303,12 +233,4 @@ async fn handle_socket(mut socket: WebSocket, params: NewGameParams, state: Arc<
             }
         }
     }
-}
-
-fn random_token() -> String {
-    return rand::thread_rng()
-        .sample_iter(&Alphanumeric)
-        .take(7)
-        .map(char::from)
-        .collect();
 }
