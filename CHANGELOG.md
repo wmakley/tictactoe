@@ -1,5 +1,13 @@
 # Changelog for all projects
 
+## 2023-05-01
+
+### Stress Tester
+* Lots of progress. Two players may now join the game, and there are some assertions.
+
+### Rust Backend
+* Fixed initial player ID being 0 instead of 1.
+
 ## 2023-04-30
 
 ### Svelte Frontend

@@ -1,4 +1,4 @@
-rust-backend/target
+target
 node_modules
 .svelte-kit
 build
