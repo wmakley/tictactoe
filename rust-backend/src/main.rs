@@ -13,7 +13,6 @@ use axum::{
 };
 use serde::Deserialize;
 use std::sync::Arc;
-use tokio::sync::watch::Receiver;
 use tokio::time::{sleep, Duration};
 use tower_http::trace::TraceLayer;
 use tracing::debug;
@@ -121,8 +120,8 @@ async fn handle_socket(mut socket: WebSocket, params: NewGameParams, state: Arc<
     // let redis = state.redis_conn_mgr.clone();
     debug!("New WebSocket connection with params: '{:?}'", params);
 
-    let join_game_result = match state.join_or_new_game(params.token, params.name) {
-        Ok(j) => j,
+    let mut conn = match server::join_or_new_game(state.clone(), params.token, params.name) {
+        Ok(c) => c,
         Err(e) => {
             let json = serde_json::to_string(&game::ToBrowser::Error(e)).unwrap();
             socket.send(Message::Text(json)).await.unwrap();
@@ -131,31 +130,13 @@ async fn handle_socket(mut socket: WebSocket, params: NewGameParams, state: Arc<
         }
     };
 
-    let player = join_game_result.player;
-    let mut receive_from_game = join_game_result.receive_from_game;
-    let game = join_game_result.game;
-
     let json = serde_json::to_string(&game::ToBrowser::JoinedGame {
-        token: join_game_result.id,
-        player_id: player.id,
-        state: join_game_result.game_state,
+        token: conn.game_id.clone(),
+        player_id: conn.player.id,
+        state: conn.game_state.borrow().clone(),
     })
     .unwrap();
     socket.send(Message::Text(json)).await.unwrap();
-
-    let disconnect = || {
-        debug!(
-            "Socket: Player {:?} disconnected, removing from game",
-            player
-        );
-        let mut game = game.lock().unwrap();
-        game.remove_player(player.id);
-        if game.state.players.is_empty() {
-            debug!("Socket: Game is empty, removing globally");
-            state.games.write().unwrap().remove(&game.id);
-        }
-        game.broadcast_state();
-    };
 
     loop {
         tokio::select! {
@@ -163,8 +144,8 @@ async fn handle_socket(mut socket: WebSocket, params: NewGameParams, state: Arc<
                 debug!("Socket: Ping");
                 socket.send(Message::Ping(vec![])).await.unwrap();
             }
-            _ = receive_from_game.changed() => {
-                let new_state = receive_from_game.borrow().clone();
+            _ = conn.game_state.changed() => {
+                let new_state = conn.game_state.borrow().clone();
                 // trace!("Socket: Sending game state change: {:?}", new_state);
 
                 let json = serde_json::to_string(&game::ToBrowser::GameState(new_state)).unwrap();
@@ -180,8 +161,8 @@ async fn handle_socket(mut socket: WebSocket, params: NewGameParams, state: Arc<
                                 debug!("Socket: Parsed message: {:?}", parsed);
 
                                 let server_err = {
-                                    let mut game = game.lock().unwrap();
-                                    let result = game.handle_msg(player.id, parsed);
+                                    let mut game = conn.game.lock().unwrap();
+                                    let result = game.handle_msg(conn.player.id, parsed);
                                     match result {
                                         Ok(changed) => {
                                             if changed {
@@ -206,7 +187,6 @@ async fn handle_socket(mut socket: WebSocket, params: NewGameParams, state: Arc<
 
                             Ok(Message::Close(_)) => {
                                 debug!("Socket: Client closed connection");
-                                disconnect();
                                 return;
                             }
 
@@ -226,7 +206,6 @@ async fn handle_socket(mut socket: WebSocket, params: NewGameParams, state: Arc<
                     }
                     None => {
                         debug!("Socket: Client disconnected");
-                        disconnect();
                         return;
                     }
                 }
