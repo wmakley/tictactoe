@@ -5,6 +5,7 @@ use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 use std::sync::{Arc, Mutex, RwLock};
 use tokio::sync::watch;
+use tokio::time::{sleep, Duration};
 use tracing::debug;
 
 #[derive(Debug)]
@@ -56,14 +57,21 @@ pub fn join_or_new_game(
                 let state = state.clone();
                 let id = id.clone();
                 tokio::spawn(async move {
-                    while rx.changed().await.is_ok() {
-                        if rx.borrow().players.len() == 0 {
+                    loop {
+                        while rx.changed().await.is_ok() {
+                            if rx.borrow().players.is_empty() {
+                                break;
+                            }
+                        }
+
+                        debug!("Game '{}' is empty, deleting in 1 minute if still empty", &id);
+                        sleep(Duration::from_secs(60)).await;
+                        if rx.borrow().players.is_empty() {
                             break;
                         }
                     }
-
-                    debug!("Game '{}' is empty, deleting", &id);
                     state.delete_game(&id);
+                    debug!("Deleted game '{}'", &id);
                 });
             }
 
@@ -83,7 +91,6 @@ pub fn join_or_new_game(
                 game: game.clone(),
                 is_new_game: is_new_game,
                 game_state: unlocked_game.state_changes.subscribe(),
-                // game_empty: self.empty_games_tx.clone(),
             })
         }
         Err(e) => Err(e),

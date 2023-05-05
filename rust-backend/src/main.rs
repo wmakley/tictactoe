@@ -145,9 +145,11 @@ async fn handle_socket(mut socket: WebSocket, params: NewGameParams, state: Arc<
                 socket.send(Message::Ping(vec![])).await.unwrap();
             }
             _ = conn.game_state.changed() => {
-                let new_state = conn.game_state.borrow().clone();
+                let new_state = {
+                    conn.game_state.borrow().clone()
+                    // make sure to release the borrow immediately
+                };
                 // trace!("Socket: Sending game state change: {:?}", new_state);
-
                 let json = serde_json::to_string(&game::ToBrowser::GameState(new_state)).unwrap();
                 socket.send(Message::Text(json)).await.unwrap();
             }
@@ -175,7 +177,7 @@ async fn handle_socket(mut socket: WebSocket, params: NewGameParams, state: Arc<
                                             Some(e)
                                         }
                                     }
-                                    // lock game
+                                    // release lock
                                 };
 
                                 if let Some(e) = server_err {
@@ -188,11 +190,6 @@ async fn handle_socket(mut socket: WebSocket, params: NewGameParams, state: Arc<
                             Ok(Message::Close(_)) => {
                                 debug!("Socket: Client closed connection");
                                 return;
-                            }
-
-                            Ok(Message::Ping(_)) => {
-                                debug!("Socket: Client pinged");
-                                socket.send(Message::Pong(vec![])).await.unwrap();
                             }
 
                             Ok(Message::Pong(_)) => {

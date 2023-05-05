@@ -1,5 +1,13 @@
 # Changelog for all projects
 
+## 2023-05-04
+
+### Rust Backend
+* Refactoring of how players are removed from games and empty games
+  are cleaned up to be "nicer" and more foolproof.
+* Delete unnecessry "Pong" code.
+* Release read lock on watch channel sooner.
+
 ## 2023-05-01
 
 ### Stress Tester
