@@ -1,5 +1,9 @@
 # Changelog for all projects
 
+## 2024-05-07
+### Stress Tester
+* Can now play a full game to completion!
+
 ## 2023-05-04
 
 ### Rust Backend
