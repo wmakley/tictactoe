@@ -3,6 +3,7 @@
 ## 2024-05-07
 ### Stress Tester
 * Can now play a full game to completion!
+* Can now play an arbitrary number of games at once. Already exposing issues.
 
 ## 2023-05-04
 
