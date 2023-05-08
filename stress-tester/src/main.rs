@@ -1,9 +1,13 @@
-use async_tungstenite::tokio::connect_async;
-use async_tungstenite::tungstenite::Message;
+use async_tungstenite::{
+    tokio::{connect_async, TokioAdapter},
+    tungstenite::Message,
+    WebSocketStream,
+};
 use clap::Parser;
 use futures::prelude::*;
 use serde::{Deserialize, Serialize};
 use tokio::{
+    net::TcpStream,
     sync::oneshot,
     task::JoinSet,
     time::{sleep, Duration},
@@ -23,31 +27,26 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
     // println!("Options: {:?}", args);
 
-    // play 1000 games
-    let n = args.n;
+    // play n games
     let mut set = JoinSet::new();
-    for i in 0..n {
+    for i in 0..args.n {
         set.spawn(play_test_game(i, args.address.clone()));
     }
 
-    let mut times: Vec<Duration> = Vec::with_capacity(n);
+    let mut times: Vec<Duration> = Vec::with_capacity(args.n);
     while let Some(r) = set.join_next().await {
         match r {
             Ok(Ok(result)) => {
                 times.push(result.elapsed_time);
-                // println!(
-                //     "Game {} finished after {:?}",
-                //     result.id, result.elapsed_time
-                // );
             }
-            Ok(Err(e)) => println!("Game Error: {:?}", e),
+            Ok(Err(e)) => println!("Game ended with error: {}", e),
             Err(e) => println!("Join Error: {:?}", e),
         }
     }
 
     println!(
         "avg time: {}ms",
-        times.iter().sum::<Duration>().as_millis() / n as u128
+        times.iter().sum::<Duration>().as_millis() / times.len() as u128
     );
 
     Ok(())
@@ -62,16 +61,19 @@ async fn play_test_game(id: GameID, address: String) -> Result<GameResult, Strin
         address.to_string(),
         String::from("P1"),
         String::from(""),
+        10,
         tokio::time::Duration::from_secs(60),
         &X_SCRIPT,
     )
     .await?;
+    // drops conn 1 if connection fails
     let mut client2 = spawn_client(
         id,
         2,
         address.to_string(),
         String::from("P2"),
         client1.join_token.clone(),
+        10,
         tokio::time::Duration::from_secs(60),
         &O_SCRIPT,
     )
@@ -79,7 +81,10 @@ async fn play_test_game(id: GameID, address: String) -> Result<GameResult, Strin
 
     let (r1, r2) = futures::join!(client1.finished(), client2.finished());
     if r1.is_err() || r2.is_err() {
-        return Err(format!("{} Client 1 error: {:?} | Client 2 error: {:?}", id, r1, r2));
+        return Err(format!(
+            "{} conn 1: error: {:?} | conn 2: error: {:?}",
+            id, r1, r2
+        ));
     }
 
     // println!("{} total time: {}ms", id, start_time.elapsed().as_millis());
@@ -104,6 +109,7 @@ impl Client {
         if let Some(rx) = self.finished.take() {
             match rx.await {
                 Ok(r) => r,
+                // error should already be fully tagged:
                 Err(e) => Err(format!("{:?}", e)),
             }
         } else {
@@ -142,26 +148,44 @@ async fn spawn_client(
     address: String,
     player_name: String,
     join_token: String,
+    max_retries: u64,
     timeout: tokio::time::Duration,
     script: &'static [usize],
 ) -> Result<Client, String> {
     let (dropped_tx, mut dropped_rx) = oneshot::channel::<bool>();
     let (token_tx, token_rx) = oneshot::channel::<String>();
     let mut token_tx = Some(token_tx);
-    let (finished_tx, finished_rx) = oneshot::channel::<Result<ConnResult, String>>();
+    let (result_tx, result_rx) = oneshot::channel::<Result<ConnResult, String>>();
 
     // TODO: needs proper escaping:
     let url = format!("{}?token={}&name={}", address, join_token, player_name);
 
     let start_time = std::time::Instant::now();
     tokio::spawn(async move {
-        let mut conn = match connect_async(url).await {
-            Ok((conn, _)) => conn,
-            Err(e) => {
-                finished_tx.send(Err(format!("{} Connection error! {:?}", game_id, e))).unwrap();
-                return;
-            }
-        };
+        let mut conn: Option<WebSocketStream<TokioAdapter<TcpStream>>> = None;
+        for i in 0..max_retries {
+            match connect_async(&url).await {
+                Ok((c, _)) => {
+                    conn = Some(c);
+                }
+                Err(_) => {
+                    // let msg = format!(
+                    //     "DEBUG {} conn {}: connection error: {:?}",
+                    //     game_id, client_id, e
+                    // );
+                    // println!("{}", msg);
+                    sleep(Duration::from_secs(5 * (i + 1))).await;
+                }
+            };
+        }
+        if conn.is_none() {
+            let _ = result_tx.send(Err(format!(
+                "{} conn {}: connection failed after {} tries",
+                game_id, client_id, max_retries
+            )));
+            return;
+        }
+        let mut conn = conn.unwrap();
 
         let mut done = false;
         // let mut player: Option<Player> = None;
@@ -218,7 +242,11 @@ async fn spawn_client(
 
                                             }
                                         }
-                                        ToBrowser::Error(_) => todo!(),
+                                        ToBrowser::Error(msg) => {
+                                            let msg = format!("{} conn {}: got unexpected Error from server: \"{}\"", game_id, client_id, msg);
+                                            let _ = result_tx.send(Err(msg));
+                                            return;
+                                        }
                                     }
                                 }
                                 Message::Binary(_) => todo!(),
@@ -245,8 +273,8 @@ async fn spawn_client(
 
                 }
                 _ = (&mut dropped_rx) => {
-                    println!("{} conn {}: got dropped msg, exiting with error", game_id, client_id);
-                    let _ = finished_tx.send(Err(format!("{} conn {}: Client dropped before game completed!", game_id, client_id)));
+                    // println!("{} conn {}: got dropped msg, exiting with error", game_id, client_id);
+                    let _ = result_tx.send(Err(format!("{} conn {}: dropped", game_id, client_id)));
                     return;
                 }
                 _ = sleep(timeout) => {
@@ -257,7 +285,7 @@ async fn spawn_client(
         }
 
         // println!("conn {}: exiting", id);
-        finished_tx
+        result_tx
             .send(Ok(ConnResult {
                 game_id: game_id,
                 client_id: client_id,
@@ -276,7 +304,7 @@ async fn spawn_client(
                     Ok(Client {
                         id: client_id,
                         join_token: token,
-                        finished: Some(finished_rx),
+                        finished: Some(result_rx),
                         dropped: Some(dropped_tx),
                     })
                 },
