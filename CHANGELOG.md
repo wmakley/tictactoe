@@ -1,6 +1,10 @@
 # Changelog for all projects
 
-## 2024-05-07
+## 2023-05-10
+### Stress Tester
+* More printout and error handling improvements.
+
+## 2023-05-07
 ### Stress Tester
 * Can now play a full game to completion!
 * Can now play an arbitrary number of games at once. Already exposing issues.

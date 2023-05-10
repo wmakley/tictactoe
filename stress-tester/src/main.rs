@@ -45,7 +45,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     println!(
-        "avg time: {}ms",
+        "avg game length: {}ms",
         times.iter().sum::<Duration>().as_millis() / times.len() as u128
     );
 
@@ -55,14 +55,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 async fn play_test_game(id: GameID, address: String) -> Result<GameResult, String> {
     let start_time = std::time::Instant::now();
 
+    let max_connect_retries = 0;
+    let global_timeout = Duration::from_secs(60);
+
     let mut client1 = spawn_client(
         id,
         1,
         address.to_string(),
         String::from("P1"),
         String::from(""),
-        10,
-        tokio::time::Duration::from_secs(60),
+        max_connect_retries,
+        global_timeout,
         &X_SCRIPT,
     )
     .await?;
@@ -73,8 +76,8 @@ async fn play_test_game(id: GameID, address: String) -> Result<GameResult, Strin
         address.to_string(),
         String::from("P2"),
         client1.join_token.clone(),
-        10,
-        tokio::time::Duration::from_secs(60),
+        max_connect_retries,
+        global_timeout,
         &O_SCRIPT,
     )
     .await?;
@@ -163,18 +166,18 @@ async fn spawn_client(
     let start_time = std::time::Instant::now();
     tokio::spawn(async move {
         let mut conn: Option<WebSocketStream<TokioAdapter<TcpStream>>> = None;
-        for i in 0..max_retries {
+        for i in 0..(max_retries+1) {
             match connect_async(&url).await {
                 Ok((c, _)) => {
                     conn = Some(c);
                 }
-                Err(_) => {
-                    // let msg = format!(
-                    //     "DEBUG {} conn {}: connection error: {:?}",
-                    //     game_id, client_id, e
-                    // );
-                    // println!("{}", msg);
-                    sleep(Duration::from_secs(5 * (i + 1))).await;
+                Err(e) => {
+                    let msg = format!(
+                        "ERROR {} conn {}: connection error: {:?}",
+                        game_id, client_id, e
+                    );
+                    println!("{}", msg);
+                    // sleep(Duration::from_secs(5 * (i + 1))).await;
                 }
             };
         }
@@ -310,7 +313,7 @@ async fn spawn_client(
                 },
                 Err(_) => {
                     // we end up here if the other end of the channel got dropped
-                    Err(format!("{} conn {}: could not get token from server, as server process exited too soon", game_id, client_id).into())
+                    Err(format!("{} conn {}: connection failed", game_id, client_id).into())
                 }
             }
         }
