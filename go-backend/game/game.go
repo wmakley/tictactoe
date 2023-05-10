@@ -328,6 +328,10 @@ const TeamNone Team = ' '
 const TeamX Team = 'X'
 const TeamO Team = 'O'
 
+func (t *Team) String() string {
+	return string(*t)
+}
+
 func (t *Team) MarshalJSON() ([]byte, error) {
 	return json.Marshal(string(*t))
 }
@@ -354,8 +358,19 @@ func (t *Team) UnmarshalJSON(data []byte) error {
 }
 
 func (s State) String() string {
+	board := strings.Builder{}
+	board.Write([]byte("['"))
+	for i, team := range s.Board {
+		board.Write([]byte(team.String()))
+		if i < len(s.Board)-1 {
+			board.Write([]byte("', '"))
+		} else {
+			board.Write([]byte("']"))
+		}
+	}
+
 	return fmt.Sprintf("State{Turn: %s, Winner: %s, Players: %s, Board: %s, Chat: %+v}",
-		string(s.Turn), s.Winner.String(), s.Players, s.Board, s.Chat)
+		string(s.Turn), s.Winner.String(), s.Players, board.String(), s.Chat)
 }
 
 func (s State) Clone() *State {

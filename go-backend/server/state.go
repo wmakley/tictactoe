@@ -85,6 +85,7 @@ func (s *serverState) EmptyGames() chan string {
 }
 
 func (s *serverState) StartCleanup() {
+	// TODO: wait a bit to be sure the game is empty, like rust implementation
 	go func() {
 		for id := range s.emptyGames {
 			log.Println("deleting game:", id)

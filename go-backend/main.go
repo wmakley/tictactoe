@@ -179,7 +179,7 @@ func websocketHandler(state server.State) http.HandlerFunc {
 
 			select {
 			case newGameState := <-g.StateChanges():
-				log.Printf(g.Id(), ": game state changed, informing player id ", connState.playerId, ": %+v", newGameState)
+				log.Printf("%s: game state changed, informing player id %d: %s", g.Id(), player.Id, newGameState.String())
 				if err := sendJSONWithTimeout(r.Context(), conn, game.NewGameStateMsg(newGameState), 10*time.Second); err != nil {
 					log.Println(g.Id(), ": fatal error sending game state JSON:", err)
 					return
