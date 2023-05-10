@@ -33,11 +33,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         set.spawn(play_test_game(i, args.address.clone()));
     }
 
-    let mut times: Vec<Duration> = Vec::with_capacity(args.n);
+    let mut game_times: Vec<Duration> = Vec::with_capacity(args.n);
     while let Some(r) = set.join_next().await {
         match r {
             Ok(Ok(result)) => {
-                times.push(result.elapsed_time);
+                game_times.push(result.elapsed_time);
             }
             Ok(Err(e)) => println!("Game ended with error: {}", e),
             Err(e) => println!("Join Error: {:?}", e),
@@ -45,9 +45,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     println!(
-        "avg game length: {}ms",
-        times.iter().sum::<Duration>().as_millis() / times.len() as u128
+        "played {} of {} requested games to completion",
+        game_times.len(),
+        args.n
     );
+
+    if !game_times.is_empty() {
+        println!(
+            "avg game length: {}ms",
+            game_times.iter().sum::<Duration>().as_millis() / game_times.len() as u128
+        );
+    }
 
     Ok(())
 }
@@ -69,7 +77,7 @@ async fn play_test_game(id: GameID, address: String) -> Result<GameResult, Strin
         &X_SCRIPT,
     )
     .await?;
-    // drops conn 1 if connection fails
+    // client1 will be dropped (automatic disconnect) if client2 fails now:
     let mut client2 = spawn_client(
         id,
         2,
@@ -166,7 +174,7 @@ async fn spawn_client(
     let start_time = std::time::Instant::now();
     tokio::spawn(async move {
         let mut conn: Option<WebSocketStream<TokioAdapter<TcpStream>>> = None;
-        for i in 0..(max_retries+1) {
+        for i in 0..(max_retries + 1) {
             match connect_async(&url).await {
                 Ok((c, _)) => {
                     conn = Some(c);
@@ -190,12 +198,12 @@ async fn spawn_client(
         }
         let mut conn = conn.unwrap();
 
-        let mut done = false;
+        let mut result: Option<Result<(), String>> = None;
         // let mut player: Option<Player> = None;
         let mut my_team: char = ' ';
         // let mut state_history: Vec<State> = Vec::with_capacity(10);
         let mut current_move: usize = 0;
-        while !done {
+        while result.is_none() {
             tokio::select! {
                 msg = conn.next() => {
                     match msg {
@@ -232,7 +240,7 @@ async fn spawn_client(
                                                 },
                                                 Some(EndState::Draw) => {
                                                     // println!("conn {}: game ended in draw", id);
-                                                    done = true;
+                                                    result = Some(Ok(()));
                                                 },
                                                 Some(EndState::Win(team)) => {
                                                     if team == my_team {
@@ -240,15 +248,13 @@ async fn spawn_client(
                                                     } else {
                                                         // println!("conn {}: game ended in loss", id);
                                                     }
-                                                    done = true;
+                                                    result = Some(Ok(()));
                                                 }
 
                                             }
                                         }
                                         ToBrowser::Error(msg) => {
-                                            let msg = format!("{} conn {}: got unexpected Error from server: \"{}\"", game_id, client_id, msg);
-                                            let _ = result_tx.send(Err(msg));
-                                            return;
+                                            result = Some(Err(format!("{} conn {}: got unexpected Error from server: \"{}\"", game_id, client_id, msg)));
                                         }
                                     }
                                 }
@@ -258,45 +264,55 @@ async fn spawn_client(
                                 }
                                 Message::Pong(_) => todo!(),
                                 Message::Close(_) => {
-                                    println!("{} conn {}: server closed connection", game_id, client_id);
-                                    done = true;
+                                    result = Some(Err(format!("{} conn {}: server closed connection", game_id, client_id)));
                                 }
                                 Message::Frame(_) => todo!(),
                             }
                         }
                         Some(Err(msg)) => {
-                            println!("{} conn {}: got Err: {:?}, exiting", game_id, client_id, msg);
-                            done = true;
+                            result = Some(Err(format!("{} conn {}: got Err: {:?}, exiting", game_id, client_id, msg)));
                         }
                         None => {
-                            println!("{} conn {}: got None, exiting", game_id, client_id);
-                            done = true;
+                            result = Some(Err(format!("{} conn {}: got None, exiting", game_id, client_id)));
                         }
                     }
 
                 }
                 _ = (&mut dropped_rx) => {
-                    // println!("{} conn {}: got dropped msg, exiting with error", game_id, client_id);
-                    let _ = result_tx.send(Err(format!("{} conn {}: dropped", game_id, client_id)));
-                    return;
+                    println!("{} conn {}: dropped", game_id, client_id);
+                    result = Some(Err(format!("{} conn {}: dropped", game_id, client_id)));
                 }
                 _ = sleep(timeout) => {
-                    println!("{} conn {}: hit {}ms timeout waiting for it to be my turn, exiting", game_id, client_id, timeout.as_millis());
-                    done = true;
+                    result = Some(Err(format!("{} conn {}: hit {}ms timeout waiting for it to be my turn, exiting", game_id, client_id, timeout.as_millis())));
                 }
             }
         }
 
-        // println!("conn {}: exiting", id);
-        result_tx
-            .send(Ok(ConnResult {
-                game_id: game_id,
-                client_id: client_id,
-                // state_history: state_history,
-                elapsed_time: start_time.elapsed(),
-                avg_latency: std::time::Duration::from_millis(0), // TODO
-            }))
-            .unwrap();
+        let result = result.unwrap();
+        match result {
+            Err(msg) => {
+                println!("{}", msg);
+                // There may be nobody listening on error in some cases, so
+                // ignore failures here.
+                let _ = result_tx.send(Err(msg));
+                return;
+            }
+            Ok(()) => {
+                // println!("conn {}: exiting", id);
+                // There should always be someone listening to successes,
+                // so failure to send result is hard failure.
+                result_tx
+                    .send(Ok(ConnResult {
+                        game_id: game_id,
+                        client_id: client_id,
+                        // state_history: state_history,
+                        elapsed_time: start_time.elapsed(),
+                        avg_latency: std::time::Duration::from_millis(0), // TODO
+                    }))
+                    .unwrap();
+            }
+        }
+        // we depend on RAII to close the connection
     });
 
     // Wait for a join token from the server, or cancel after timeout.
@@ -318,7 +334,7 @@ async fn spawn_client(
             }
         }
         _ = sleep(timeout) => {
-            return Err(format!("{} conn {}: hit {}ms timeout waiting for token", game_id, client_id, timeout.as_millis()).into());
+            Err(format!("{} conn {}: hit {}ms timeout waiting for token", game_id, client_id, timeout.as_millis()).into())
         }
     }
 }
