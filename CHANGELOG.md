@@ -4,6 +4,12 @@
 ### Stress Tester
 * More printout and error handling improvements.
 
+### Rust Backend
+* Explicitly handle unexpected socket messages and socket errors
+  by disconnecting, as in testing these errors seem to be entirely
+  connection resets.
+* No need to log ping pong.
+
 ## 2023-05-07
 ### Stress Tester
 * Can now play a full game to completion!

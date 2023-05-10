@@ -192,12 +192,19 @@ async fn handle_socket(mut socket: WebSocket, params: NewGameParams, state: Arc<
                                 return;
                             }
 
-                            Ok(Message::Pong(_)) => {
-                                debug!("Socket: Client ponged");
+                            Ok(Message::Pong(_)) => {}
+
+                            Ok(Message::Ping(_)) => {}
+
+                            Ok(Message::Binary(_)) => {
+                                debug!("Socket: Received unexpected binary message, closing connection");
+                                return;
                             }
 
-                            _ => {
-                                debug!("Socket: Unhandled message type, ignoring");
+                            Err(e) => {
+                                // most errors seem to be resets or disconnects
+                                debug!("Socket: Error: {:?}, closing connection", e);
+                                return;
                             }
                         }
                     }
