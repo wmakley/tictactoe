@@ -2,6 +2,7 @@
 
 ## 2023-05-10
 ### Stress Tester
+* Calculate average server latency (time to respond to player actions) for the run.
 * More printout and error handling improvements.
 
 ### Rust Backend

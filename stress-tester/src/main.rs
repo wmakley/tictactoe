@@ -34,10 +34,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let mut game_times: Vec<Duration> = Vec::with_capacity(args.n);
+    let mut latency_samples: Vec<std::time::Duration> = Vec::with_capacity(args.n * 8);
+
     while let Some(r) = set.join_next().await {
         match r {
             Ok(Ok(result)) => {
                 game_times.push(result.elapsed_time);
+                latency_samples.extend(result.latency_samples);
             }
             Ok(Err(e)) => println!("Game ended with error: {}", e),
             Err(e) => println!("Join Error: {:?}", e),
@@ -56,6 +59,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             game_times.iter().sum::<Duration>().as_millis() / game_times.len() as u128
         );
     }
+    if !latency_samples.is_empty() {
+        let sum = latency_samples.iter().sum::<std::time::Duration>();
+        let avg = sum.as_millis() / latency_samples.len() as u128;
+        println!("avg latency: {}ms", avg);
+    }
 
     Ok(())
 }
@@ -64,7 +72,7 @@ async fn play_test_game(id: GameID, address: String) -> Result<GameResult, Strin
     let start_time = std::time::Instant::now();
 
     let max_connect_retries = 0;
-    let global_timeout = Duration::from_secs(60);
+    let global_timeout = Duration::from_secs(60 * 10);
 
     let mut client1 = spawn_client(
         id,
@@ -97,11 +105,26 @@ async fn play_test_game(id: GameID, address: String) -> Result<GameResult, Strin
             id, r1, r2
         ));
     }
+    let r1 = r1.unwrap();
+    let r2 = r2.unwrap();
 
-    // println!("{} total time: {}ms", id, start_time.elapsed().as_millis());
+    let mut latencies = r1.latency_samples;
+    latencies.extend(r2.latency_samples);
+
+    let sum = latencies.iter().sum::<std::time::Duration>();
+    let avg = sum.as_millis() / latencies.len() as u128;
+
+    println!(
+        "{} total time: {}ms, avg latency: {}ms",
+        id,
+        start_time.elapsed().as_millis(),
+        avg
+    );
     Ok(GameResult {
         id: id,
         elapsed_time: start_time.elapsed(),
+        latency_samples: latencies,
+        avg_latency: avg,
     })
 }
 
@@ -133,14 +156,15 @@ impl Client {
 struct ConnResult {
     pub game_id: GameID,
     pub client_id: ClientID,
-    // pub state_history: Vec<State>,
     pub elapsed_time: std::time::Duration,
-    pub avg_latency: std::time::Duration,
+    pub latency_samples: Vec<std::time::Duration>,
 }
 
 struct GameResult {
     pub id: GameID,
     pub elapsed_time: std::time::Duration,
+    pub latency_samples: Vec<std::time::Duration>,
+    pub avg_latency: u128,
 }
 
 type GameID = usize;
@@ -203,6 +227,8 @@ async fn spawn_client(
         let mut my_team: char = ' ';
         // let mut state_history: Vec<State> = Vec::with_capacity(10);
         let mut current_move: usize = 0;
+        let mut latency_samples: Vec<std::time::Duration> = Vec::with_capacity(10);
+        let mut time_of_last_request: Option<std::time::Instant> = None;
         while result.is_none() {
             tokio::select! {
                 msg = conn.next() => {
@@ -222,8 +248,11 @@ async fn spawn_client(
                                             // state_history.push(state);
                                         },
                                         ToBrowser::GameState(state) => {
-                                            // state_history.push(state);
-                                            // let state = state_history.last().unwrap();
+                                            println!("{} conn {}: new state: {:?}", game_id, client_id, state);
+
+                                            if let Some(t) = time_of_last_request.take() {
+                                                latency_samples.push(t.elapsed());
+                                            }
 
                                             // check if game is over
                                             match state.winner {
@@ -236,6 +265,7 @@ async fn spawn_client(
                                                         current_move += 1;
                                                         let msg = serde_json::to_string(&msg).unwrap();
                                                         conn.send(Message::Text(msg)).await.unwrap();
+                                                        time_of_last_request = Some(std::time::Instant::now());
                                                     }
                                                 },
                                                 Some(EndState::Draw) => {
@@ -307,7 +337,7 @@ async fn spawn_client(
                         client_id: client_id,
                         // state_history: state_history,
                         elapsed_time: start_time.elapsed(),
-                        avg_latency: std::time::Duration::from_millis(0), // TODO
+                        latency_samples: latency_samples,
                     }))
                     .unwrap();
             }
