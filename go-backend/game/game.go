@@ -490,6 +490,13 @@ func systemSource() ChatMessageSource {
 	}
 }
 
+func (c ChatMessageSource) String() string {
+	if c.SourceType == SourceTypeSystem {
+		return "System"
+	}
+	return fmt.Sprintf("{Player %d}", c.PlayerId)
+}
+
 func (c ChatMessageSource) MarshalJSON() ([]byte, error) {
 	if c.SourceType == SourceTypeSystem {
 		return []byte(`"System"`), nil
