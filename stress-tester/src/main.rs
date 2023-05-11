@@ -10,7 +10,7 @@ use tokio::{
     net::TcpStream,
     sync::oneshot,
     task::JoinSet,
-    time::{sleep, Duration},
+    time::{sleep, Instant, Duration},
 };
 
 #[derive(Debug, Parser)]
@@ -34,7 +34,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let mut game_times: Vec<Duration> = Vec::with_capacity(args.n);
-    let mut latency_samples: Vec<std::time::Duration> = Vec::with_capacity(args.n * 8);
+    let mut latency_samples: Vec<Duration> = Vec::with_capacity(args.n * 8);
 
     while let Some(r) = set.join_next().await {
         match r {
@@ -60,7 +60,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         );
     }
     if !latency_samples.is_empty() {
-        let sum = latency_samples.iter().sum::<std::time::Duration>();
+        let sum = latency_samples.iter().sum::<Duration>();
         let avg = sum.as_millis() / latency_samples.len() as u128;
         println!("avg latency: {}ms", avg);
     }
@@ -69,7 +69,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 async fn play_test_game(id: GameID, address: String) -> Result<GameResult, String> {
-    let start_time = std::time::Instant::now();
+    let start_time = Instant::now();
 
     let max_connect_retries = 0;
     let global_timeout = Duration::from_secs(60 * 10);
@@ -111,7 +111,7 @@ async fn play_test_game(id: GameID, address: String) -> Result<GameResult, Strin
     let mut latencies = r1.latency_samples;
     latencies.extend(r2.latency_samples);
 
-    let sum = latencies.iter().sum::<std::time::Duration>();
+    let sum = latencies.iter().sum::<Duration>();
     let avg = sum.as_millis() / latencies.len() as u128;
 
     println!(
@@ -156,14 +156,14 @@ impl Client {
 struct ConnResult {
     pub game_id: GameID,
     pub client_id: ClientID,
-    pub elapsed_time: std::time::Duration,
-    pub latency_samples: Vec<std::time::Duration>,
+    pub elapsed_time: Duration,
+    pub latency_samples: Vec<Duration>,
 }
 
 struct GameResult {
     pub id: GameID,
-    pub elapsed_time: std::time::Duration,
-    pub latency_samples: Vec<std::time::Duration>,
+    pub elapsed_time: Duration,
+    pub latency_samples: Vec<Duration>,
     pub avg_latency: u128,
 }
 
@@ -195,7 +195,7 @@ async fn spawn_client(
     // TODO: needs proper escaping:
     let url = format!("{}?token={}&name={}", address, join_token, player_name);
 
-    let start_time = std::time::Instant::now();
+    let start_time = Instant::now();
     tokio::spawn(async move {
         let mut conn: Option<WebSocketStream<TokioAdapter<TcpStream>>> = None;
         for i in 0..(max_retries + 1) {
@@ -227,8 +227,8 @@ async fn spawn_client(
         let mut my_team: char = ' ';
         // let mut state_history: Vec<State> = Vec::with_capacity(10);
         let mut current_move: usize = 0;
-        let mut latency_samples: Vec<std::time::Duration> = Vec::with_capacity(10);
-        let mut time_of_last_request: Option<std::time::Instant> = None;
+        let mut latency_samples: Vec<Duration> = Vec::with_capacity(10);
+        let mut time_of_last_request: Option<Instant> = None;
         while result.is_none() {
             tokio::select! {
                 msg = conn.next() => {
@@ -265,7 +265,7 @@ async fn spawn_client(
                                                         current_move += 1;
                                                         let msg = serde_json::to_string(&msg).unwrap();
                                                         conn.send(Message::Text(msg)).await.unwrap();
-                                                        time_of_last_request = Some(std::time::Instant::now());
+                                                        time_of_last_request = Some(Instant::now());
                                                     }
                                                 },
                                                 Some(EndState::Draw) => {
