@@ -161,6 +161,7 @@ func websocketHandler(state server.State) http.HandlerFunc {
 			}
 			return
 		}
+		log.Println(g.Id(), "player", player.Id, " joined on team", player.Team.String())
 		connState.game = g
 		connState.playerId = player.Id
 
@@ -172,7 +173,7 @@ func websocketHandler(state server.State) http.HandlerFunc {
 			return
 		}
 
-		go readFromWebsocket(conn, incomingMsgs, fatalSocketErr)
+		go readFromWebsocket(ctx, conn, incomingMsgs, fatalSocketErr)
 
 		for {
 			var decodedMsg game.FromBrowser
@@ -191,7 +192,7 @@ func websocketHandler(state server.State) http.HandlerFunc {
 					log.Println(g.Id(), "fatal error decoding msg:", decodeErr)
 					return
 				} else {
-					log.Printf("decoded msg: %+v", decodedMsg)
+					//log.Printf("decoded msg: %+v", decodedMsg)
 					g.Lock()
 					err := g.HandleMsg(connState.playerId, decodedMsg)
 					g.BroadcastState()
@@ -214,9 +215,9 @@ func websocketHandler(state server.State) http.HandlerFunc {
 	}
 }
 
-func readFromWebsocket(c *websocket.Conn, incomingMsgs chan []byte, fatalSocketErr chan error) {
+func readFromWebsocket(ctx context.Context, c *websocket.Conn, incomingMsgs chan []byte, fatalSocketErr chan error) {
 	for {
-		_, msg, err := c.Read(context.Background())
+		_, msg, err := c.Read(ctx)
 		if err != nil {
 			fatalSocketErr <- err
 			return
