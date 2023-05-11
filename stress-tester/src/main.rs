@@ -257,8 +257,8 @@ async fn spawn_client(
                                             // check if game is over
                                             match state.winner {
                                                 None => {
-                                                    // take a turn if the game isn't over and it's my turn
-                                                    if state.turn == my_team && current_move < script.len() {
+                                                    // take a turn if the game if it's my turn
+                                                    if state.turn == my_team && state.players.len() == 2 && current_move < script.len() {
                                                         let msg = FromBrowser::Move {
                                                             space: script[current_move],
                                                         };

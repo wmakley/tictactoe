@@ -143,7 +143,7 @@ func (g *game) HandleMsg(playerId PlayerId, msg FromBrowser) error {
 }
 
 func (g *game) takeTurn(playerId PlayerId, space int) error {
-	if len(g.state.Players) == 0 {
+	if len(g.state.Players) < 2 {
 		return errors.New("not enough players")
 	}
 	if g.state.Winner.Done {
@@ -322,7 +322,7 @@ type State struct {
 	Chat    []ChatMessage `json:"chat"`
 }
 
-type Team byte
+type Team rune
 
 const TeamNone Team = ' '
 const TeamX Team = 'X'
