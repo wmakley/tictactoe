@@ -255,7 +255,7 @@ func disconnect(c *websocket.Conn, serverState server.State, connState *connecti
 }
 
 func randomToken() string {
-	return randStringRunes(5)
+	return randStringRunes(7)
 }
 
 var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
