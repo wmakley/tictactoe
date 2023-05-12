@@ -72,7 +72,7 @@ async fn play_test_game(id: GameID, address: String) -> Result<GameResult, Strin
     let start_time = Instant::now();
 
     let max_connect_retries = 0;
-    let global_timeout = Duration::from_secs(60 * 10);
+    let global_timeout = Duration::from_secs(30);
 
     let mut client1 = spawn_client(
         id,
