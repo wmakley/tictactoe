@@ -4,7 +4,7 @@ release:
 dev:
 	RUST_LOG="info,tictactoe_rs=trace,tower_http=trace" cargo run
 
-deploy: js
+deploy:
 	fly deploy
 
 docker-image:
