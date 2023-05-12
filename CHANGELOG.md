@@ -11,6 +11,10 @@
 * Comment a bunch of print statements so stress test results are meaningful
   again, after debugging the Go server.
 
+### Rust Backend
+* Set log level to INFO in production, since debug logging was found
+  to substantially increase latency.
+
 ## 2023-05-10
 ### Stress Tester
 * Calculate average server latency (time to respond to player actions) for the run.
