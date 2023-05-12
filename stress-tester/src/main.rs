@@ -114,12 +114,12 @@ async fn play_test_game(id: GameID, address: String) -> Result<GameResult, Strin
     let sum = latencies.iter().sum::<Duration>();
     let avg = sum.as_millis() / latencies.len() as u128;
 
-    println!(
-        "{} total time: {}ms, avg latency: {}ms",
-        id,
-        start_time.elapsed().as_millis(),
-        avg
-    );
+    // println!(
+    //     "{} total time: {}ms, avg latency: {}ms",
+    //     id,
+    //     start_time.elapsed().as_millis(),
+    //     avg
+    // );
     Ok(GameResult {
         id: id,
         elapsed_time: start_time.elapsed(),
@@ -248,7 +248,7 @@ async fn spawn_client(
                                             // state_history.push(state);
                                         },
                                         ToBrowser::GameState(state) => {
-                                            println!("{} conn {}: new state: {:?}", game_id, client_id, state);
+                                            // println!("{} conn {}: new state: {:?}", game_id, client_id, state);
 
                                             if let Some(t) = time_of_last_request.take() {
                                                 latency_samples.push(t.elapsed());
@@ -259,6 +259,12 @@ async fn spawn_client(
                                                 None => {
                                                     // take a turn if the game if it's my turn
                                                     if state.turn == my_team && state.players.len() == 2 && current_move < script.len() {
+
+                                                        // give time for server update both players
+                                                        // - mitigates race condition in go server,
+                                                        //   proving the existence of said race condition
+                                                        // sleep(Duration::from_millis(100)).await;
+
                                                         let msg = FromBrowser::Move {
                                                             space: script[current_move],
                                                         };

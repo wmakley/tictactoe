@@ -1,5 +1,16 @@
 # Changelog for all projects
 
+## 2023-05-11
+### Go Backend
+* Fix major race condition, where not all players were guaranteed to receive
+  all state updates if they played too fast.
+
+### Stress Tester
+* Fix logic error where it didn't properly wait for game to be full
+  before trying to take a turn.
+* Comment a bunch of print statements so stress test results are meaningful
+  again, after debugging the Go server.
+
 ## 2023-05-10
 ### Stress Tester
 * Calculate average server latency (time to respond to player actions) for the run.

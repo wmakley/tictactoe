@@ -12,8 +12,7 @@ import (
 type Game interface {
 	Id() string
 	State() *State
-	StateChanges() chan *State
-	AddPlayer(name string) (Player, error)
+	AddPlayer(name string) (Player, <-chan *State, error)
 	RemovePlayer(id PlayerId) error
 	IsEmpty() bool
 	HandleMsg(playerId PlayerId, msg FromBrowser) error
@@ -23,17 +22,17 @@ type Game interface {
 
 func NewGame(id string) (Game, error) {
 	return &game{
-		id:           id,
-		state:        newState(),
-		stateChanges: make(chan *State, 2),
+		id:             id,
+		state:          newState(),
+		playerChannels: make([]chan<- *State, 0, 2),
 	}, nil
 }
 
 type game struct {
-	id           string
-	state        *State
-	stateChanges chan *State
-	mutex        sync.Mutex
+	id             string
+	state          *State
+	mutex          sync.Mutex
+	playerChannels []chan<- *State
 }
 
 func (g *game) Id() string {
@@ -44,10 +43,6 @@ func (g *game) State() *State {
 	return g.state
 }
 
-func (g *game) StateChanges() chan *State {
-	return g.stateChanges
-}
-
 func (g *game) Lock() {
 	g.mutex.Lock()
 }
@@ -56,9 +51,9 @@ func (g *game) Unlock() {
 	g.mutex.Unlock()
 }
 
-func (g *game) AddPlayer(name string) (Player, error) {
+func (g *game) AddPlayer(name string) (Player, <-chan *State, error) {
 	if len(g.state.Players) >= 2 {
-		return Player{}, errors.New("game is full")
+		return Player{}, nil, errors.New("game is full")
 	}
 
 	var id PlayerId
@@ -80,7 +75,11 @@ func (g *game) AddPlayer(name string) (Player, error) {
 	}
 	g.state.Players = append(g.state.Players, player)
 	g.addChatMessage(systemSource(), player.String()+" has joined the game!")
-	return player, nil
+
+	stateChan := make(chan *State, 10)
+	g.playerChannels = append(g.playerChannels, stateChan)
+
+	return player, stateChan, nil
 }
 
 func (g *game) RemovePlayer(id PlayerId) error {
@@ -268,9 +267,9 @@ func (g *game) BroadcastState() {
 	}
 	// broadcast once for each player
 	stateCopy := g.state.Clone()
-	for i := 0; i < len(g.state.Players); i++ {
+	for _, listener := range g.playerChannels {
 		select {
-		case g.stateChanges <- stateCopy:
+		case listener <- stateCopy:
 			// sent
 		default:
 			// channel is full, drop the message

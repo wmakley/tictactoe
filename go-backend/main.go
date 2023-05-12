@@ -152,7 +152,7 @@ func websocketHandler(state server.State) http.HandlerFunc {
 
 		defer disconnect(conn, state, &connState)
 
-		g, player, err := state.JoinOrNewGame(token, playerName)
+		g, player, stateChanges, err := state.JoinOrNewGame(token, playerName)
 		if err != nil {
 			log.Println("error joining game:", err)
 			writeErr := sendJSONWithTimeout(ctx, conn, game.NewErrorMsg("error joining game: "+err.Error()), 10*time.Second)
@@ -179,8 +179,8 @@ func websocketHandler(state server.State) http.HandlerFunc {
 			var decodedMsg game.FromBrowser
 
 			select {
-			case newGameState := <-g.StateChanges():
-				log.Printf("%s: game state changed, informing player id %d: %s", g.Id(), player.Id, newGameState.String())
+			case newGameState := <-stateChanges:
+				log.Printf("%s: game state changed, informing player id %d", g.Id(), player.Id)
 				if err := sendJSONWithTimeout(r.Context(), conn, game.NewGameStateMsg(newGameState), 10*time.Second); err != nil {
 					log.Println(g.Id(), ": fatal error sending game state JSON:", err)
 					return
