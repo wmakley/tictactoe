@@ -1,6 +1,6 @@
-SRCS := go.mod go.sum $(shell find . -name *.go)
+SOURCE := go.mod go.sum $(shell find . -name *.go)
 
-go-backend: $(SRCS) $(MOD)
+go-backend: $(SOURCE)
 	go build .
 
 clean:
