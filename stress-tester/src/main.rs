@@ -33,40 +33,76 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         set.spawn(play_test_game(i, args.address.clone()));
     }
 
-    let mut game_times: Vec<Duration> = Vec::with_capacity(args.n);
+    let mut overall_times: Vec<Duration> = Vec::with_capacity(args.n);
+    let mut game_times: Vec<Duration> = Vec::with_capacity(args.n * 2);
+    let mut p1_join_times: Vec<Duration> = Vec::with_capacity(args.n);
+    let mut p2_join_times: Vec<Duration> = Vec::with_capacity(args.n);
     let mut latency_samples: Vec<Duration> = Vec::with_capacity(args.n * 8);
 
     while let Some(r) = set.join_next().await {
         match r {
             Ok(Ok(result)) => {
-                game_times.push(result.elapsed_time);
-                latency_samples.extend(result.latency_samples);
+                overall_times.push(result.overall_time);
+                game_times.push(result.p1_stats.game_time);
+                game_times.push(result.p2_stats.game_time);
+                p1_join_times.push(result.p1_stats.time_to_join_response);
+                p2_join_times.push(result.p2_stats.time_to_join_response);
+                latency_samples.extend(result.p1_stats.latency_samples);
+                latency_samples.extend(result.p2_stats.latency_samples);
             }
             Ok(Err(e)) => println!("Game ended with error: {}", e),
             Err(e) => println!("Join Error: {:?}", e),
         }
     }
 
+    // reporting:
+
     println!(
         "played {} of {} requested games to completion",
-        game_times.len(),
+        overall_times.len(),
         args.n
     );
 
+    if !overall_times.is_empty() {
+        println!(
+            "mean overall game length including time to connect: {}ms",
+            overall_times.iter().sum::<Duration>().as_millis() / overall_times.len() as u128
+        );
+    }
+    if !p1_join_times.is_empty() {
+        println!(
+            "mean player 1 (X) wait to join game: {}ms",
+            p1_join_times.iter().sum::<Duration>().as_millis() / p1_join_times.len() as u128
+        )
+    }
+    if !p2_join_times.is_empty() {
+        println!(
+            "mean player 2 (O) wait to join game: {}ms",
+            p2_join_times.iter().sum::<Duration>().as_millis() / p2_join_times.len() as u128
+        )
+    }
     if !game_times.is_empty() {
         println!(
-            "avg game length: {}ms",
+            "mean game length after connection: {}ms",
             game_times.iter().sum::<Duration>().as_millis() / game_times.len() as u128
         );
     }
     if !latency_samples.is_empty() {
         let sum = latency_samples.iter().sum::<Duration>();
         let avg = sum.as_millis() / latency_samples.len() as u128;
-        println!("avg latency: {}ms", avg);
+        println!("mean turn/response latency: {}ms", avg);
     }
 
     Ok(())
 }
+
+struct GameResult {
+    pub overall_time: Duration,
+    pub p1_stats: ClientResult,
+    pub p2_stats: ClientResult,
+}
+
+type GameID = usize;
 
 async fn play_test_game(id: GameID, address: String) -> Result<GameResult, String> {
     let start_time = Instant::now();
@@ -99,6 +135,7 @@ async fn play_test_game(id: GameID, address: String) -> Result<GameResult, Strin
     .await?;
 
     let (r1, r2) = futures::join!(client1.finished(), client2.finished());
+    let overall_time = start_time.elapsed();
     if r1.is_err() || r2.is_err() {
         return Err(format!(
             "{} conn 1: error: {:?} | conn 2: error: {:?}",
@@ -108,11 +145,11 @@ async fn play_test_game(id: GameID, address: String) -> Result<GameResult, Strin
     let r1 = r1.unwrap();
     let r2 = r2.unwrap();
 
-    let mut latencies = r1.latency_samples;
-    latencies.extend(r2.latency_samples);
+    // let mut latencies = r1.latency_samples;
+    // latencies.extend(r2.latency_samples);
 
-    let sum = latencies.iter().sum::<Duration>();
-    let avg = sum.as_millis() / latencies.len() as u128;
+    // let sum = latencies.iter().sum::<Duration>();
+    // let avg = sum.as_millis() / latencies.len() as u128;
 
     // println!(
     //     "{} total time: {}ms, avg latency: {}ms",
@@ -121,17 +158,15 @@ async fn play_test_game(id: GameID, address: String) -> Result<GameResult, Strin
     //     avg
     // );
     Ok(GameResult {
-        id: id,
-        elapsed_time: start_time.elapsed(),
-        latency_samples: latencies,
-        avg_latency: avg,
+        overall_time: overall_time,
+        p1_stats: r1,
+        p2_stats: r2,
     })
 }
 
 struct Client {
-    pub id: ClientID,
     pub join_token: String,
-    finished: Option<oneshot::Receiver<Result<ConnResult, String>>>,
+    finished: Option<oneshot::Receiver<Result<ClientResult, String>>>,
     dropped: Option<oneshot::Sender<bool>>,
 }
 
@@ -139,7 +174,7 @@ type ClientID = usize;
 
 impl Client {
     // Wait for game to be finished.
-    pub async fn finished(&mut self) -> Result<ConnResult, String> {
+    pub async fn finished(&mut self) -> Result<ClientResult, String> {
         if let Some(rx) = self.finished.take() {
             match rx.await {
                 Ok(r) => r,
@@ -153,21 +188,12 @@ impl Client {
 }
 
 #[derive(Debug)]
-struct ConnResult {
-    pub game_id: GameID,
-    pub client_id: ClientID,
-    pub elapsed_time: Duration,
+struct ClientResult {
+    // pub overall_time: Duration,
+    pub time_to_join_response: Duration,
+    pub game_time: Duration,
     pub latency_samples: Vec<Duration>,
 }
-
-struct GameResult {
-    pub id: GameID,
-    pub elapsed_time: Duration,
-    pub latency_samples: Vec<Duration>,
-    pub avg_latency: u128,
-}
-
-type GameID = usize;
 
 impl Drop for Client {
     fn drop(&mut self) {
@@ -190,15 +216,15 @@ async fn spawn_client(
     let (dropped_tx, mut dropped_rx) = oneshot::channel::<bool>();
     let (token_tx, token_rx) = oneshot::channel::<String>();
     let mut token_tx = Some(token_tx);
-    let (result_tx, result_rx) = oneshot::channel::<Result<ConnResult, String>>();
+    let (result_tx, result_rx) = oneshot::channel::<Result<ClientResult, String>>();
 
     // TODO: needs proper escaping:
     let url = format!("{}?token={}&name={}", address, join_token, player_name);
 
-    let start_time = Instant::now();
     tokio::spawn(async move {
+        // let overall_start_time = Instant::now();
         let mut conn: Option<WebSocketStream<TokioAdapter<TcpStream>>> = None;
-        for i in 0..(max_retries + 1) {
+        for _i in 0..(max_retries + 1) {
             match connect_async(&url).await {
                 Ok((c, _)) => {
                     conn = Some(c);
@@ -222,10 +248,10 @@ async fn spawn_client(
         }
         let mut conn = conn.unwrap();
 
+        let join_game_start_time = Instant::now();
+        let mut time_to_join_response: Option<Duration> = None;
         let mut result: Option<Result<(), String>> = None;
-        // let mut player: Option<Player> = None;
         let mut my_team: char = ' ';
-        // let mut state_history: Vec<State> = Vec::with_capacity(10);
         let mut current_move: usize = 0;
         let mut latency_samples: Vec<Duration> = Vec::with_capacity(10);
         let mut time_of_last_request: Option<Instant> = None;
@@ -240,6 +266,7 @@ async fn spawn_client(
                                     let parsed: ToBrowser = serde_json::from_str(&text).unwrap();
                                     match parsed {
                                         ToBrowser::JoinedGame { token, player_id, state } => {
+                                            time_to_join_response = Some(join_game_start_time.elapsed());
                                             if let Some(tx) = token_tx.take() {
                                                 let _ = tx.send(token);
                                             }
@@ -338,11 +365,10 @@ async fn spawn_client(
                 // There should always be someone listening to successes,
                 // so failure to send result is hard failure.
                 result_tx
-                    .send(Ok(ConnResult {
-                        game_id: game_id,
-                        client_id: client_id,
-                        // state_history: state_history,
-                        elapsed_time: start_time.elapsed(),
+                    .send(Ok(ClientResult {
+                        // overall_time: overall_start_time.elapsed(),
+                        time_to_join_response: time_to_join_response.unwrap(),
+                        game_time: join_game_start_time.elapsed(),
                         latency_samples: latency_samples,
                     }))
                     .unwrap();
@@ -357,7 +383,6 @@ async fn spawn_client(
             match token {
                 Ok(token) => {
                     Ok(Client {
-                        id: client_id,
                         join_token: token,
                         finished: Some(result_rx),
                         dropped: Some(dropped_tx),

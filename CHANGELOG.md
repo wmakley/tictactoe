@@ -1,5 +1,10 @@
 # Changelog for all projects
 
+## 2023-05-12
+### Stress Tester
+* Collect even more interesting and useful stats.
+* Delete unused struct fields.
+
 ## 2023-05-11
 ### Go Backend
 * Fix major race condition, where not all players were guaranteed to receive
