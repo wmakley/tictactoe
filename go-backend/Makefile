@@ -9,4 +9,7 @@ clean:
 dev:
 	go run .
 
-.PHONY: clean dev
+deploy:
+	fly deploy
+
+.PHONY: clean dev deploy
