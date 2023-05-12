@@ -5,6 +5,10 @@
 * Collect even more interesting and useful stats.
 * Delete unused struct fields.
 
+### Go Backend
+* Wait 1 minute to delete empty games.
+* Generate longer default game IDs of 7 chars (same as Rust backend).
+
 ## 2023-05-11
 ### Go Backend
 * Fix major race condition, where not all players were guaranteed to receive

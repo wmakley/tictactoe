@@ -6,6 +6,7 @@ import (
 	"log"
 	"strings"
 	"sync"
+	"time"
 )
 
 type State interface {
@@ -88,10 +89,14 @@ func (s *serverState) StartCleanup() {
 	// TODO: wait a bit to be sure the game is empty, like rust implementation
 	go func() {
 		for id := range s.emptyGames {
-			log.Println("deleting game:", id)
-			if err := s.deleteGame(id); err != nil {
-				log.Println("error deleting game:", err)
-			}
+			go func(id string) {
+				log.Println("deleting game in 1 minute:", id)
+				time.Sleep(1 * time.Minute)
+				if err := s.deleteGame(id); err != nil {
+					log.Println("error deleting game:", err)
+				}
+				log.Println("deleted game:", id)
+			}(id)
 		}
 	}()
 }
