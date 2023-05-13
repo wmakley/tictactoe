@@ -16,4 +16,4 @@ RUN cargo install --path .
 FROM debian:bullseye-slim
 COPY --from=builder /usr/local/cargo/bin/stress-tester /usr/local/bin/stress-tester
 WORKDIR /app
-CMD ["stress-tester"]
+ENTRYPOINT ["stress-tester"]
