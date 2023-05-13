@@ -4,6 +4,7 @@
 ### Stress Tester
 * Collect even more interesting and useful stats.
 * Delete unused struct fields.
+* Dockerize it.
 
 ### Go Backend
 * Wait 1 minute to delete empty games.
