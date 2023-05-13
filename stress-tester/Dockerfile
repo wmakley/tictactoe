@@ -1,3 +1,4 @@
+# == builder ==
 FROM rust:slim-bullseye as builder
 WORKDIR /usr/src/myapp
 
@@ -13,7 +14,16 @@ RUN sed -i 's#dummy.rs#src/main.rs#' Cargo.toml
 COPY . .
 RUN cargo install --path .
 
+# == production image ==
 FROM debian:bullseye-slim
+
+RUN apt update && \
+    apt install -y ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+RUN update-ca-certificates
+
 COPY --from=builder /usr/local/cargo/bin/stress-tester /usr/local/bin/stress-tester
+
 WORKDIR /app
+
 ENTRYPOINT ["stress-tester"]

@@ -1,5 +1,10 @@
 # Changelog for all projects
 
+## 2023-05-13
+### Stress Tester
+* Fix TLS connection not working.
+* Added CA certs to docker image.
+
 ## 2023-05-12
 ### Stress Tester
 * Collect even more interesting and useful stats.

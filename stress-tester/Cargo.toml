@@ -9,7 +9,7 @@ path = "src/main.rs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-async-tungstenite = { version = "0.22.0", features = ["tokio-runtime"] }
+async-tungstenite = { version = "0.22.0", features = ["tokio-rustls-native-certs", "tokio-runtime"] }
 clap = { version = "4.0", features = ["derive"] }
 futures = "0.3.28"
 serde = { version = "1.0.160", features = ["derive"] }

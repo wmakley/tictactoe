@@ -1,16 +1,11 @@
-use async_tungstenite::{
-    tokio::{connect_async, TokioAdapter},
-    tungstenite::Message,
-    WebSocketStream,
-};
+use async_tungstenite::{tokio::connect_async, tungstenite::Message};
 use clap::Parser;
 use futures::prelude::*;
 use serde::{Deserialize, Serialize};
 use tokio::{
-    net::TcpStream,
     sync::oneshot,
     task::JoinSet,
-    time::{sleep, Instant, Duration},
+    time::{sleep, Duration, Instant},
 };
 
 #[derive(Debug, Parser)]
@@ -120,7 +115,7 @@ type GameID = usize;
 async fn play_test_game(id: GameID, address: String) -> Result<GameResult, String> {
     let start_time = Instant::now();
 
-    let max_connect_retries = 0;
+    // let max_connect_retries = 0;
     let global_timeout = Duration::from_secs(30);
 
     let mut client1 = spawn_client(
@@ -129,7 +124,7 @@ async fn play_test_game(id: GameID, address: String) -> Result<GameResult, Strin
         address.to_string(),
         String::from("P1"),
         String::from(""),
-        max_connect_retries,
+        // max_connect_retries,
         global_timeout,
         &X_SCRIPT,
     )
@@ -141,7 +136,7 @@ async fn play_test_game(id: GameID, address: String) -> Result<GameResult, Strin
         address.to_string(),
         String::from("P2"),
         client1.join_token.clone(),
-        max_connect_retries,
+        // max_connect_retries,
         global_timeout,
         &O_SCRIPT,
     )
@@ -223,7 +218,7 @@ async fn spawn_client(
     address: String,
     player_name: String,
     join_token: String,
-    max_retries: u64,
+    // max_retries: u64,
     timeout: tokio::time::Duration,
     script: &'static [usize],
 ) -> Result<Client, String> {
@@ -237,31 +232,14 @@ async fn spawn_client(
 
     tokio::spawn(async move {
         let overall_start_time = Instant::now();
-        let mut conn: Option<WebSocketStream<TokioAdapter<TcpStream>>> = None;
-        for _i in 0..(max_retries + 1) {
-            match connect_async(&url).await {
-                Ok((c, _)) => {
-                    conn = Some(c);
-                }
-                Err(e) => {
-                    let msg = format!(
-                        "ERROR {} conn {}: connection error: {:?}",
-                        game_id, client_id, e
-                    );
-                    println!("{}", msg);
-                    // sleep(Duration::from_secs(5 * (i + 1))).await;
-                }
-            };
-        }
-        if conn.is_none() {
-            let _ = result_tx.send(Err(format!(
-                "{} conn {}: connection failed after {} tries",
-                game_id, client_id, max_retries
-            )));
-            return;
-        }
+        let mut conn = match connect_async(&url).await {
+            Ok((conn, _resp)) => conn,
+            Err(e) => {
+                let _ = result_tx.send(Err(format!("ERROR {} conn {}: {}", game_id, client_id, e)));
+                return;
+            }
+        };
         let time_to_connect = overall_start_time.elapsed();
-        let mut conn = conn.unwrap();
 
         let join_game_start_time = Instant::now();
         let mut time_to_join_response: Option<Duration> = None;
