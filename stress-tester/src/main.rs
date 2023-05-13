@@ -223,7 +223,7 @@ async fn spawn_client(
     moves: &'static [usize],
 ) -> Result<Client, String> {
     let (dropped_tx, mut dropped_rx) = oneshot::channel::<bool>();
-    let (token_tx, token_rx) = oneshot::channel::<String>();
+    let (token_tx, token_rx) = oneshot::channel::<Result<String, String>>();
     let mut token_tx = Some(token_tx);
     let (result_tx, result_rx) = oneshot::channel::<Result<ClientResult, String>>();
 
@@ -235,7 +235,12 @@ async fn spawn_client(
         let mut conn = match connect_async(&url).await {
             Ok((conn, _resp)) => conn,
             Err(e) => {
-                let _ = result_tx.send(Err(format!("ERROR {} conn {}: {}", game_id, client_id, e)));
+                let msg = format!("{} conn {}: {}", game_id, client_id, e);
+                // println!("{}", msg);
+                if let Some(tx) = token_tx.take() {
+                    let _ = tx.send(Err(msg.clone()));
+                }
+                let _ = result_tx.send(Err(msg));
                 return;
             }
         };
@@ -261,7 +266,7 @@ async fn spawn_client(
                                         ToBrowser::JoinedGame { token, player_id, state } => {
                                             time_to_join_response = Some(join_game_start_time.elapsed());
                                             if let Some(tx) = token_tx.take() {
-                                                let _ = tx.send(token);
+                                                let _ = tx.send(Ok(token));
                                             }
                                             let player = state.players.iter().find(|p| p.id == player_id).map(|p| p.clone()).unwrap();
                                             my_team = player.team;
@@ -375,14 +380,17 @@ async fn spawn_client(
     tokio::select! {
         token = token_rx => {
             match token {
-                Ok(token) => {
+                Ok(Ok(token)) => {
                     Ok(Client {
                         join_token: token,
                         finished: Some(result_rx),
                         dropped: Some(dropped_tx),
                     })
                 },
-                Err(_) => {
+                Ok(Err(conn_err)) => {
+                    Err(conn_err)
+                }
+                Err(recv_err) => {
                     // we end up here if the other end of the channel got dropped
                     Err(format!("{} conn {}: connection failed", game_id, client_id).into())
                 }
