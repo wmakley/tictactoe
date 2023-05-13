@@ -14,8 +14,8 @@ struct Args {
     n: usize,
 }
 
-static X_SCRIPT: [usize; 4] = [4, 1, 2, 8];
-static O_SCRIPT: [usize; 4] = [0, 7, 6, 3];
+static X_MOVES: [usize; 4] = [4, 1, 2, 8];
+static O_MOVES: [usize; 4] = [0, 7, 6, 3];
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -126,7 +126,7 @@ async fn play_test_game(id: GameID, address: String) -> Result<GameResult, Strin
         String::from(""),
         // max_connect_retries,
         global_timeout,
-        &X_SCRIPT,
+        &X_MOVES,
     )
     .await?;
     // client1 will be dropped (automatic disconnect) if client2 fails now:
@@ -138,7 +138,7 @@ async fn play_test_game(id: GameID, address: String) -> Result<GameResult, Strin
         client1.join_token.clone(),
         // max_connect_retries,
         global_timeout,
-        &O_SCRIPT,
+        &O_MOVES,
     )
     .await?;
 
@@ -220,7 +220,7 @@ async fn spawn_client(
     join_token: String,
     // max_retries: u64,
     timeout: tokio::time::Duration,
-    script: &'static [usize],
+    moves: &'static [usize],
 ) -> Result<Client, String> {
     let (dropped_tx, mut dropped_rx) = oneshot::channel::<bool>();
     let (token_tx, token_rx) = oneshot::channel::<String>();
@@ -278,7 +278,7 @@ async fn spawn_client(
                                             match state.winner {
                                                 None => {
                                                     // take a turn if the game if it's my turn
-                                                    if state.turn == my_team && state.players.len() == 2 && current_move < script.len() {
+                                                    if state.turn == my_team && state.players.len() == 2 && current_move < moves.len() {
 
                                                         // give time for server update both players
                                                         // - mitigates race condition in go server,
@@ -286,7 +286,7 @@ async fn spawn_client(
                                                         // sleep(Duration::from_millis(100)).await;
 
                                                         let msg = FromBrowser::Move {
-                                                            space: script[current_move],
+                                                            space: moves[current_move],
                                                         };
                                                         current_move += 1;
                                                         let msg = serde_json::to_string(&msg).unwrap();
