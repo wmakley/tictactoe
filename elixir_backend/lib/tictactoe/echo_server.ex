@@ -1,4 +1,4 @@
-defmodule TictactoeBackend.EchoServer do
+defmodule Tictactoe.EchoServer do
   def init(options) do
     {:ok, options}
   end

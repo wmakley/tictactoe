@@ -1,8 +1,5 @@
-defmodule TictactoeBackend.Router do
+defmodule Tictactoe.Router do
   use Plug.Router
-
-  alias Bandit.WebSocketAdapter
-  alias TictactoeBackend.EchoServer
 
   plug(Plug.Logger)
   plug(:match)
@@ -20,7 +17,7 @@ defmodule TictactoeBackend.Router do
 
   get "/ws" do
     conn
-    |> WebSocketAdapter.upgrade(EchoServer, [], timeout: 60_000)
+    |> WebSockAdapter.upgrade(Tictactoe.EchoServer, [], timeout: 60_000)
     |> halt()
   end
 
