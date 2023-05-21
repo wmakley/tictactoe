@@ -22,6 +22,6 @@ defmodule Tictactoe.Router do
   end
 
   match _ do
-    send_resp(conn, 404, "not found")
+    send_resp(conn, 404, "404 Not found.\n")
   end
 end
