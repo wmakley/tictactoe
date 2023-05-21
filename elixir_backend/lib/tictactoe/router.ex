@@ -1,7 +1,11 @@
 defmodule Tictactoe.Router do
   use Plug.Router
 
-  plug(Plug.Logger)
+  unless Mix.env() == :test do
+    # Annoyingly noisy when testing, as there are few plug tests
+    plug(Plug.Logger)
+  end
+
   plug(:match)
   plug(:dispatch)
 

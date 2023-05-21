@@ -8,6 +8,7 @@ defmodule Tictactoe.Supervisor do
   @impl true
   def init(:ok) do
     children = [
+      {Tictactoe.Registry, name: Tictactoe.Registry},
       {Bandit, plug: Tictactoe.Router, scheme: :http, port: 3000}
     ]
 
