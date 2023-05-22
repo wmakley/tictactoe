@@ -1,6 +1,8 @@
 defmodule Tictactoe.GameRegistry do
   @moduledoc """
   A simple registry of all active game pids, indexed by their id/join token.
+  Could use the built-in Registry abstraction, but this is more fun and
+  educational.
   """
   use GenServer
 
