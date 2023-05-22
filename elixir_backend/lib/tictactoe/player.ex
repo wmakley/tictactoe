@@ -1,3 +1,4 @@
 defmodule Tictactoe.Player do
-  defstruct [:id, :name, :team, wins: 0]
+  @derive Jason.Encoder
+  defstruct [:id, :team, :name, wins: 0]
 end

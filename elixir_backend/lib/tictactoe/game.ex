@@ -1,5 +1,4 @@
 defmodule Tictactoe.Game do
-  @derive {Jason.Encoder, except: [:id]}
   defstruct [
     :id,
     players: [],
@@ -37,5 +36,11 @@ defmodule Tictactoe.Game do
     player = %Player{id: id, name: name, team: team}
     game = %{game | players: game.players ++ [player]}
     {:ok, player, game}
+  end
+end
+
+defimpl Jason.Encoder, for: Tictactoe.Game do
+  def encode(game, opts) do
+    Jason.Encode.map(Map.take(game, [:players, :board, :turn, :winner, :chat]), opts)
   end
 end
