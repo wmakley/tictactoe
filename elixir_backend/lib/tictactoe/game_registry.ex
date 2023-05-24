@@ -6,14 +6,20 @@ defmodule Tictactoe.GameRegistry do
   """
   use GenServer
 
+  require Logger
+
+  alias Tictactoe.GameRegistry
+  alias Tictactoe.GameServer
+
   def start_link(init_arg) do
     GenServer.start_link(__MODULE__, init_arg, name: Tictactoe.GameRegistry)
   end
 
   @impl true
   def init(_init_arg) do
-    :ets.new(__MODULE__, [:named_table, :set, :public])
-    {:ok, nil}
+    pids = :ets.new(:pids, [:named_table, :set, :public])
+    refs = :ets.new(:refs, [:named_table, :set, :protected])
+    {:ok, {pids, refs}}
   end
 
   @doc """
@@ -21,23 +27,79 @@ defmodule Tictactoe.GameRegistry do
   Returns the pid of the game.
   """
   @spec lookup_or_start_game(String.t()) :: {:ok, pid}
-  def lookup_or_start_game(id) do
-    case :ets.lookup(__MODULE__, id) do
-      [{^id, pid}] ->
+  def lookup_or_start_game(id) when is_binary(id) do
+    Logger.debug(fn -> "GameRegistry.lookup_or_start_game: #{inspect(id)}" end)
+
+    case lookup(id) do
+      {:ok, pid} ->
         {:ok, pid}
 
-      [] ->
-        {:ok, pid} =
-          DynamicSupervisor.start_child(Tictactoe.GameSupervisor, {Tictactoe.GameServer, id})
+      nil ->
+        Logger.debug(fn ->
+          "GameRegistry.lookup_or_start_game: #{inspect(id)}: starting new game"
+        end)
 
-        :ets.insert(__MODULE__, {id, pid})
+        {:ok, pid} = DynamicSupervisor.start_child(Tictactoe.GameSupervisor, {GameServer, id})
+
+        GenServer.cast(GameRegistry, {:monitor_game, id, pid})
+
+        :ets.insert(:pids, {id, pid})
         {:ok, pid}
     end
   end
 
+  @spec lookup(String.t()) :: {:ok, pid} | nil
+  def lookup(id) when is_binary(id) do
+    case :ets.lookup(:pids, id) do
+      [{^id, pid}] ->
+        Logger.debug(fn -> "GameRegistry.lookup: #{inspect(id)}: #{inspect(pid)}" end)
+        {:ok, pid}
+
+      [] ->
+        Logger.debug(fn -> "GameRegistry.lookup: #{inspect(id)}: not found" end)
+        nil
+    end
+  end
+
   # TODO: should only be able to be called when game process terminates
-  @spec delete_game(String.t()) :: true
-  def delete_game(id) do
-    :ets.delete(__MODULE__, id)
+  # @spec delete_game(String.t()) :: :ok
+  # def delete_game(id) when is_binary(id) do
+  #   Logger.debug(fn -> "GameRegistry.delete_game: #{inspect(id)}" end)
+  #   :ets.delete(__MODULE__, id)
+  #   :ok
+  # end
+
+  @impl true
+  def handle_cast({:monitor_game, id, pid}, state) when is_binary(id) and is_pid(pid) do
+    Logger.debug(fn ->
+      "GameRegistry.handle_cast: monitor_game: id=#{inspect(id)} pid=#{inspect(pid)}"
+    end)
+
+    ref = Process.monitor(pid)
+    :ets.insert(:refs, {ref, id})
+    state
+  end
+
+  @impl true
+  def handle_info({:DOWN, ref, :process, pid, reason}, state) do
+    Logger.debug(fn ->
+      "GameRegistry.handle_info: #{inspect(ref)}: #{inspect(pid)}: process down: #{inspect(reason)}}"
+    end)
+
+    spawn(fn ->
+      case :ets.lookup(:refs, ref) do
+        [{^ref, id}] ->
+          "GameRegistry.handle_info: cleaning up #{inspect(id)}"
+          :ets.delete(:pids, id)
+          :ets.delete(:refs, ref)
+
+        [] ->
+          Logger.warn(fn ->
+            "GameRegistry.handle_info: #{inspect(ref)}: #{inspect(pid)}: not found"
+          end)
+      end
+    end)
+
+    {:noreply, state}
   end
 end

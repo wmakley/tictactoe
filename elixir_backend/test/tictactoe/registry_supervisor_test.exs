@@ -3,6 +3,10 @@ defmodule Tictactoe.RegistrySupervisorTest do
 
   alias Tictactoe.GameRegistry
 
+  setup do
+    {:ok, %{supervisor: start_supervised!(Tictactoe.RegistrySupervisor)}}
+  end
+
   test "registry stays up if games crash" do
     # start two games
     {:ok, pid} = GameRegistry.lookup_or_start_game("test")
