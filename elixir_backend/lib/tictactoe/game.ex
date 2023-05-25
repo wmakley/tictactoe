@@ -10,12 +10,13 @@ defmodule Tictactoe.Game do
 
   alias Tictactoe.Game
   alias Tictactoe.Player
+  alias Tictactoe.ChatMessage
 
   def new(id) do
-    %Game{id: id}
+    %__MODULE__{id: id}
   end
 
-  def add_player(%Game{players: players} = game, name) do
+  def add_player(%__MODULE__{players: players} = game, name) do
     if length(players) == 2 do
       {:error, "Game is full", game}
     else
@@ -32,15 +33,38 @@ defmodule Tictactoe.Game do
     end
   end
 
-  defp add_player(game, name, id, team) do
+  defp add_player(%__MODULE__{} = game, name, id, team) do
     player = %Player{id: id, name: name, team: team}
     game = %{game | players: game.players ++ [player]}
     {:ok, player, game}
+  end
+
+  def update_player_name(%__MODULE__{} = game, id, name) when is_integer(id) do
+    update_player(game, id, fn p -> %{p | name: name} end)
+  end
+
+  defp update_player(%__MODULE__{} = game, id, update_fn) when is_integer(id) do
+    game = %{
+      game
+      | players: Enum.map(game.players, fn p -> if p.id == id, do: update_fn.(p), else: p end)
+    }
+
+    {:ok, game}
+  end
+
+  def json_representation(%__MODULE__{} = game) do
+    %{
+      board: game.board,
+      chat: game.chat |> Enum.map(&ChatMessage.json_representation/1),
+      players: game.players,
+      turn: game.turn,
+      winner: game.winner
+    }
   end
 end
 
 defimpl Jason.Encoder, for: Tictactoe.Game do
   def encode(game, opts) do
-    Jason.Encode.map(Map.take(game, [:players, :board, :turn, :winner, :chat]), opts)
+    Jason.Encode.map(Tictactoe.Game.json_representation(game), opts)
   end
 end
