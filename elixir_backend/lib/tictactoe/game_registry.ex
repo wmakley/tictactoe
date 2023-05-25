@@ -28,16 +28,16 @@ defmodule Tictactoe.GameRegistry do
   """
   @spec lookup_or_start_game(String.t()) :: {:ok, pid}
   def lookup_or_start_game(id) when is_binary(id) do
-    Logger.debug(fn -> "GameRegistry.lookup_or_start_game: #{inspect(id)}" end)
+    # Logger.debug(fn -> "GameRegistry.lookup_or_start_game: #{inspect(id)}" end)
 
     case lookup(id) do
       {:ok, pid} ->
         {:ok, pid}
 
       nil ->
-        Logger.debug(fn ->
-          "GameRegistry.lookup_or_start_game: #{inspect(id)}: starting new game"
-        end)
+        # Logger.debug(fn ->
+        #   "GameRegistry.lookup_or_start_game: #{inspect(id)}: starting new game"
+        # end)
 
         {:ok, pid} = DynamicSupervisor.start_child(Tictactoe.GameSupervisor, {GameServer, id})
 
@@ -52,28 +52,22 @@ defmodule Tictactoe.GameRegistry do
   def lookup(id) when is_binary(id) do
     case :ets.lookup(:pids, id) do
       [{^id, pid}] ->
-        Logger.debug(fn -> "GameRegistry.lookup: #{inspect(id)}: #{inspect(pid)}" end)
+        # Logger.debug(fn -> "GameRegistry.lookup: #{inspect(id)}: #{inspect(pid)}" end)
         {:ok, pid}
 
       [] ->
-        Logger.debug(fn -> "GameRegistry.lookup: #{inspect(id)}: not found" end)
+        # Logger.debug(fn -> "GameRegistry.lookup: #{inspect(id)}: not found" end)
         nil
     end
   end
 
-  # TODO: should only be able to be called when game process terminates
-  # @spec delete_game(String.t()) :: :ok
-  # def delete_game(id) when is_binary(id) do
-  #   Logger.debug(fn -> "GameRegistry.delete_game: #{inspect(id)}" end)
-  #   :ets.delete(__MODULE__, id)
-  #   :ok
-  # end
+  ## Private handlers
 
   @impl true
   def handle_cast({:monitor_game, id, pid}, state) when is_binary(id) and is_pid(pid) do
-    Logger.debug(fn ->
-      "GameRegistry.handle_cast: monitor_game: id=#{inspect(id)} pid=#{inspect(pid)}"
-    end)
+    # Logger.debug(fn ->
+    #   "GameRegistry.handle_cast: monitor_game: id=#{inspect(id)} pid=#{inspect(pid)}"
+    # end)
 
     ref = Process.monitor(pid)
     :ets.insert(:refs, {ref, id})
@@ -81,15 +75,15 @@ defmodule Tictactoe.GameRegistry do
   end
 
   @impl true
-  def handle_info({:DOWN, ref, :process, pid, reason}, state) do
-    Logger.debug(fn ->
-      "GameRegistry.handle_info: #{inspect(ref)}: #{inspect(pid)}: process down: #{inspect(reason)}}"
-    end)
+  def handle_info({:DOWN, ref, :process, pid, _reason}, state) do
+    # Logger.debug(fn ->
+    #   "GameRegistry.handle_info: #{inspect(ref)}: #{inspect(pid)}: process down: #{inspect(reason)}}"
+    # end)
 
-    Task.start(fn ->
+    Task.start_link(fn ->
       case :ets.lookup(:refs, ref) do
         [{^ref, id}] ->
-          "GameRegistry.handle_info: cleaning up #{inspect(id)}"
+          Logger.debug(fn -> "GameRegistry.handle_info: cleaning up #{inspect(id)}" end)
           :ets.delete(:pids, id)
           :ets.delete(:refs, ref)
 
