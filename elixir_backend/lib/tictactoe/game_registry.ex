@@ -9,6 +9,7 @@ defmodule Tictactoe.GameRegistry do
   require Logger
 
   # alias Tictactoe.GameRegistry
+  alias Tictactoe.GameRegistry
   alias Tictactoe.GameServer
 
   def start_link(init_arg) do
@@ -27,26 +28,24 @@ defmodule Tictactoe.GameRegistry do
   Lookup a game pid by its id/join token. If the game is not found, start a new one.
   Returns the pid of the game.
   """
-  @spec lookup_or_start_game(String.t()) :: {:ok, pid}
-  def lookup_or_start_game(id) when is_binary(id) do
+  @spec lookup_or_start_game(GameRegistry, String.t()) :: {:ok, pid}
+  def lookup_or_start_game(registry, id) when is_binary(id) do
     # Logger.debug(fn -> "GameRegistry.lookup_or_start_game: #{inspect(id)}" end)
 
+    # Perform a concurrent lookup first, before performing
+    # a synchronized lookup and start.
     case lookup_pid(id) do
       {:ok, pid} ->
-        {:ok, pid}
+        if Process.alive?(pid) do
+          {:ok, pid}
+        else
+          unregister_game(pid)
+          {:ok, pid} = GenServer.call(registry, {:lookup_or_start_game, id})
+          {:ok, pid}
+        end
 
       nil ->
-        # Logger.debug(fn ->
-        #   "GameRegistry.lookup_or_start_game: #{inspect(id)}: starting new game"
-        # end)
-
-        # {:ok, pid} = DynamicSupervisor.start_child(Tictactoe.GameSupervisor, {GameServer, id})
-        {:ok, pid} = GameServer.start_link(id)
-
-        # GenServer.cast(GameRegistry, {:monitor_game, id, pid})
-
-        :ets.insert(:game_pids, {id, pid})
-        :ets.insert(:game_ids, {pid, id})
+        {:ok, pid} = GenServer.call(registry, {:lookup_or_start_game, id})
         {:ok, pid}
     end
   end
@@ -77,13 +76,38 @@ defmodule Tictactoe.GameRegistry do
 
   ## Private handlers
 
+  @doc """
+  Start a new game if not registered and register it, returning the pid. As it is synchronized, multiple games may not be started
+  at once with the same id.
+  """
   @impl true
-  def handle_info({:EXIT, pid, reason}, state) do
-    Logger.debug(fn ->
-      "GameRegistry.handle_info: :EXIT #{inspect(pid)}: #{inspect(reason)}"
-    end)
+  def handle_call({:lookup_or_start_game, id}, _caller, state) do
+    case lookup_pid(id) do
+      {:ok, pid} ->
+        {:reply, {:ok, pid}, state}
 
-    unregister_game(pid)
+      nil ->
+        {:ok, pid} = start_game(id)
+        {:reply, {:ok, pid}, state}
+    end
+  end
+
+  defp start_game(id) do
+    {:ok, pid} = GameServer.start_link(id)
+    :ets.insert(:game_pids, {id, pid})
+    :ets.insert(:game_ids, {pid, id})
+    {:ok, pid}
+  end
+
+  @impl true
+  def handle_info({:EXIT, pid, _reason}, state) do
+    # Logger.debug(fn ->
+    #   "GameRegistry.handle_info: :EXIT #{inspect(pid)}: #{inspect(reason)}"
+    # end)
+
+    Task.start(fn ->
+      unregister_game(pid)
+    end)
 
     {:noreply, state}
   end
@@ -91,14 +115,17 @@ defmodule Tictactoe.GameRegistry do
   defp unregister_game(pid) when is_pid(pid) do
     case lookup_id(pid) do
       {:ok, id} ->
-        Logger.debug(fn -> "GameRegistry.handle_info: cleaning up #{inspect(id)}" end)
+        # Logger.debug(fn -> "GameRegistry.unregister_game: deleting #{inspect(id)}" end)
         :ets.delete(:game_pids, id)
-        :ets.delete(:game_ids, pid)
 
       nil ->
         Logger.warn(fn ->
           "GameRegistry.unregister_game: #{inspect(pid)}: not found"
         end)
+
+        nil
     end
+
+    :ets.delete(:game_ids, pid)
   end
 end
