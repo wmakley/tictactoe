@@ -167,7 +167,20 @@ defmodule Tictactoe.Game do
       chat: game.chat |> Enum.map(&ChatMessage.json_representation/1),
       players: game.players,
       turn: game.turn,
-      winner: game.winner
+      winner:
+        case game.winner do
+          nil ->
+            nil
+
+          :draw ->
+            "Draw"
+
+          "X" ->
+            %{"Win" => "X"}
+
+          "O" ->
+            %{"Win" => "O"}
+        end
     }
   end
 end
