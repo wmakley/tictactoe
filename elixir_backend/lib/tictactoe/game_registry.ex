@@ -17,8 +17,8 @@ defmodule Tictactoe.GameRegistry do
 
   @impl true
   def init(_init_arg) do
-    pids = :ets.new(:pids, [:named_table, :set, :public])
-    refs = :ets.new(:refs, [:named_table, :set, :public])
+    pids = :ets.new(:game_pids, [:named_table, :set, :public])
+    refs = :ets.new(:game_refs, [:named_table, :set, :public])
     {:ok, {pids, refs}}
   end
 
@@ -43,14 +43,14 @@ defmodule Tictactoe.GameRegistry do
 
         GenServer.cast(GameRegistry, {:monitor_game, id, pid})
 
-        :ets.insert(:pids, {id, pid})
+        :ets.insert(:game_pids, {id, pid})
         {:ok, pid}
     end
   end
 
   @spec lookup(String.t()) :: {:ok, pid} | nil
   def lookup(id) when is_binary(id) do
-    case :ets.lookup(:pids, id) do
+    case :ets.lookup(:game_pids, id) do
       [{^id, pid}] ->
         # Logger.debug(fn -> "GameRegistry.lookup: #{inspect(id)}: #{inspect(pid)}" end)
         {:ok, pid}
@@ -70,7 +70,7 @@ defmodule Tictactoe.GameRegistry do
     # end)
 
     ref = Process.monitor(pid)
-    :ets.insert(:refs, {ref, id})
+    :ets.insert(:game_refs, {ref, id})
     {:noreply, state}
   end
 
@@ -81,11 +81,11 @@ defmodule Tictactoe.GameRegistry do
     # end)
 
     Task.start_link(fn ->
-      case :ets.lookup(:refs, ref) do
+      case :ets.lookup(:game_refs, ref) do
         [{^ref, id}] ->
           Logger.debug(fn -> "GameRegistry.handle_info: cleaning up #{inspect(id)}" end)
-          :ets.delete(:pids, id)
-          :ets.delete(:refs, ref)
+          :ets.delete(:game_pids, id)
+          :ets.delete(:game_refs, ref)
 
         [] ->
           Logger.warn(fn ->
