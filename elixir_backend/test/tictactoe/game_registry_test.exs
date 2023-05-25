@@ -59,7 +59,7 @@ defmodule Tictactoe.GameRegistryTest do
     :ok = GenServer.stop(Tictactoe.GameRegistry, :shutdown)
 
     # need to wait a second for supervisor to restart the registry
-    Process.sleep(1000)
+    Process.sleep(100)
 
     # both games should be dead
     refute Process.alive?(pid)

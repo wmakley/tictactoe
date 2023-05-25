@@ -46,9 +46,38 @@ defmodule Tictactoe.GameTest do
   test "update player name when player id is invalid" do
     game = Game.new("update-test")
 
-    {:ok, player, game} = Game.add_player(game, "Player 1")
-    {:error, msg} = Game.update_player_name(game, 2, "Player 1 Updated")
+    {:error, msg} = Game.update_player_name(game, 1, "Player 1 Updated")
 
     assert msg == "Player not found"
+  end
+
+  test "remove_player" do
+    game = Game.new("browser-msg-test")
+
+    {:ok, player, game} = Game.add_player(game, "Player 1")
+    {:ok, game} = Game.remove_player(game, player.id)
+
+    assert game.players == []
+
+    {:error, msg} = Game.remove_player(game, 2)
+    assert msg == "Player not found"
+  end
+
+  test "take_turn" do
+    game = Game.new("take-turn-test")
+
+    {:ok, p1, game} = Game.add_player(game, "Player 1")
+    {:error, msg} = Game.take_turn(game, p1.id, 0)
+    assert msg == "Not enough players"
+
+    {:ok, p2, game} = Game.add_player(game, "Player 2")
+    {:error, msg} = Game.take_turn(game, p2.id, 0)
+    assert msg == "Not your turn"
+
+    {:ok, game} = Game.take_turn(game, p1.id, 0)
+    assert game.board == ["X", " ", " ", " ", " ", " ", " ", " ", " "]
+
+    {:ok, game} = Game.take_turn(game, p2.id, 1)
+    assert game.board == ["X", "O", " ", " ", " ", " ", " ", " ", " "]
   end
 end

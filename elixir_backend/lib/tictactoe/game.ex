@@ -8,7 +8,6 @@ defmodule Tictactoe.Game do
     chat: []
   ]
 
-  alias Tictactoe.Game
   alias Tictactoe.Player
   alias Tictactoe.ChatMessage
 
@@ -44,7 +43,7 @@ defmodule Tictactoe.Game do
   end
 
   defp update_player(%__MODULE__{} = game, id, update_fn) when is_integer(id) do
-    case Enum.find(game.players, fn p -> p.id == id end) do
+    case find_player(game, id) do
       nil ->
         {:error, "Player not found"}
 
@@ -59,6 +58,56 @@ defmodule Tictactoe.Game do
 
         {:ok, game}
     end
+  end
+
+  defp find_player(%__MODULE__{} = game, id) when is_integer(id) do
+    Enum.find(game.players, fn p -> p.id == id end)
+  end
+
+  def remove_player(%__MODULE__{} = game, id) when is_integer(id) do
+    case find_player(game, id) do
+      nil ->
+        {:error, "Player not found"}
+
+      _player ->
+        game = %{
+          game
+          | players: Enum.filter(game.players, fn p -> p.id != id end)
+        }
+
+        {:ok, game}
+    end
+  end
+
+  def take_turn(%__MODULE__{players: players} = game, id, space)
+      when is_integer(id) and is_integer(space) do
+    case length(players) do
+      2 ->
+        case find_player(game, id) do
+          nil ->
+            {:error, "Player not found"}
+
+          %Player{id: ^id, team: team} = player ->
+            if game.turn != team do
+              {:error, "Not your turn"}
+            else
+              take_turn_happy_path(game, team, space)
+            end
+        end
+
+      _ ->
+        {:error, "Not enough players"}
+    end
+  end
+
+  defp take_turn_happy_path(game, team, space) do
+    game = %{
+      game
+      | board: Enum.map_index(game.board, fn i, v -> if i == space, do: team, else: v end)
+        # turn: if team == "X", do: "O", else: "X"
+    }
+
+    {:ok, game}
   end
 
   def json_representation(%__MODULE__{} = game) do
