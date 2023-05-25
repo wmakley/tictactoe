@@ -18,7 +18,7 @@ defmodule Tictactoe.GameRegistry do
   @impl true
   def init(_init_arg) do
     pids = :ets.new(:pids, [:named_table, :set, :public])
-    refs = :ets.new(:refs, [:named_table, :set, :protected])
+    refs = :ets.new(:refs, [:named_table, :set, :public])
     {:ok, {pids, refs}}
   end
 
@@ -77,7 +77,7 @@ defmodule Tictactoe.GameRegistry do
 
     ref = Process.monitor(pid)
     :ets.insert(:refs, {ref, id})
-    state
+    {:noreply, state}
   end
 
   @impl true
@@ -86,7 +86,7 @@ defmodule Tictactoe.GameRegistry do
       "GameRegistry.handle_info: #{inspect(ref)}: #{inspect(pid)}: process down: #{inspect(reason)}}"
     end)
 
-    spawn(fn ->
+    Task.start(fn ->
       case :ets.lookup(:refs, ref) do
         [{^ref, id}] ->
           "GameRegistry.handle_info: cleaning up #{inspect(id)}"

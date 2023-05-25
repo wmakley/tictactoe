@@ -26,10 +26,13 @@ defmodule Tictactoe.GameRegistryTest do
 
     receive do
       {:DOWN, ^ref, :process, ^pid, reason} ->
-        Logger.debug(fn -> "game process exited: #{inspect(reason)}" end)
+        Logger.debug(fn -> "Test pid #{inspect(pid)} exited: #{inspect(reason)}" end)
+
+      other ->
+        raise "unexpected message: #{inspect(other)}"
     end
 
-    # Process.sleep(1000)
+    Process.sleep(1000)
     assert GameRegistry.lookup("will-crash") == nil
   end
 end
