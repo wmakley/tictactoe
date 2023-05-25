@@ -3,6 +3,7 @@ defmodule Tictactoe.GameTest do
 
   alias Tictactoe.Game
   alias Tictactoe.Player
+  alias Tictactoe.ChatMessage
 
   test "new game" do
     game = Game.new("test")
@@ -79,5 +80,34 @@ defmodule Tictactoe.GameTest do
 
     {:ok, game} = Game.take_turn(game, p2.id, 1)
     assert game.board == ["X", "O", " ", " ", " ", " ", " ", " ", " "]
+  end
+
+  test "add chat message" do
+    game = Game.new("chat-test")
+
+    {:ok, p1, game} = Game.add_player(game, "Player 1")
+    {:ok, p2, game} = Game.add_player(game, "Player 2")
+
+    {:error, reason} = Game.add_chat_message(game, p1.id, "  ")
+    assert reason == "Empty message"
+
+    {:error, reason} = Game.add_chat_message(game, 999, "valid message")
+    assert reason == "Player not found"
+
+    {:error, reason} = Game.add_chat_message(game, p2.id, String.duplicate("a", 501))
+    assert reason == "Message cannot be longer than 500 characters"
+
+    {:ok, game} = Game.add_chat_message(game, p1.id, "valid message")
+
+    assert game.chat == [
+             %ChatMessage{id: 1, source: {:player, p1.id}, text: "valid message"}
+           ]
+
+    {:ok, game} = Game.add_chat_message(game, p2.id, "valid message 2")
+
+    assert game.chat == [
+             %ChatMessage{id: 1, source: {:player, p1.id}, text: "valid message"},
+             %ChatMessage{id: 2, source: {:player, p2.id}, text: "valid message 2"}
+           ]
   end
 end

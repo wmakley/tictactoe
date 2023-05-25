@@ -11,6 +11,7 @@ defmodule Tictactoe.Game do
   alias Tictactoe.Player
   alias Tictactoe.ChatMessage
 
+  @spec new(String.t()) :: %__MODULE__{}
   def new(id) do
     %__MODULE__{id: id}
   end
@@ -38,16 +39,17 @@ defmodule Tictactoe.Game do
     {:ok, player, game}
   end
 
-  def update_player_name(%__MODULE__{} = game, id, name) when is_integer(id) do
+  def update_player_name(%__MODULE__{} = game, id, name)
+      when is_integer(id) and is_binary(name) do
     update_player(game, id, fn p -> %{p | name: name} end)
   end
 
   defp update_player(%__MODULE__{} = game, id, update_fn) when is_integer(id) do
     case find_player(game, id) do
-      nil ->
-        {:error, "Player not found"}
+      {:error, reason} ->
+        {:error, reason}
 
-      player ->
+      {:ok, player} ->
         updated_player = update_fn.(player)
 
         game = %{
@@ -60,16 +62,24 @@ defmodule Tictactoe.Game do
     end
   end
 
+  @spec find_player(game :: %__MODULE__{}, id :: integer) ::
+          {:ok, %Player{}} | {:error, String.t()}
   defp find_player(%__MODULE__{} = game, id) when is_integer(id) do
-    Enum.find(game.players, fn p -> p.id == id end)
+    case Enum.find(game.players, fn p -> p.id == id end) do
+      nil ->
+        {:error, "Player not found"}
+
+      player ->
+        {:ok, player}
+    end
   end
 
   def remove_player(%__MODULE__{} = game, id) when is_integer(id) do
     case find_player(game, id) do
-      nil ->
-        {:error, "Player not found"}
+      {:error, reason} ->
+        {:error, reason}
 
-      _player ->
+      {:ok, _} ->
         game = %{
           game
           | players: Enum.filter(game.players, fn p -> p.id != id end)
@@ -79,15 +89,56 @@ defmodule Tictactoe.Game do
     end
   end
 
+  def add_chat_message(%__MODULE__{} = game, player_id, message)
+      when is_integer(player_id) and is_binary(message) do
+    with {:ok, _} <- find_player(game, player_id),
+         {:ok, message} <- validate_chat_msg(message) do
+      chat_message = %ChatMessage{
+        id: length(game.chat) + 1,
+        source: ChatMessage.player_source(player_id),
+        text: message
+      }
+
+      {:ok, append_chat_message(game, chat_message)}
+    else
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp append_chat_message(%__MODULE__{} = game, %ChatMessage{} = chat_message) do
+    %{
+      game
+      | chat: game.chat ++ [chat_message]
+    }
+  end
+
+  @spec validate_chat_msg(text :: String.t()) :: {:ok, String.t()} | {:error, String.t()}
+  defp validate_chat_msg(text) do
+    trimmed = String.trim(text)
+    length = String.length(trimmed)
+
+    cond do
+      length == 0 ->
+        {:error, "Empty message"}
+
+      length > 500 ->
+        {:error, "Message cannot be longer than 500 characters"}
+
+      true ->
+        {:ok, trimmed}
+    end
+  end
+
   def take_turn(%__MODULE__{players: players} = game, id, space)
       when is_integer(id) and is_integer(space) do
     case length(players) do
       2 ->
         case find_player(game, id) do
-          nil ->
-            {:error, "Player not found"}
+          {:error, reason} ->
+            {:error, reason}
 
-          %Player{id: ^id, team: team} ->
+          {:ok, %Player{team: team}} ->
             if game.turn != team do
               {:error, "Not your turn"}
             else
