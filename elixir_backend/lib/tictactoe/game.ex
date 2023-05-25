@@ -44,12 +44,21 @@ defmodule Tictactoe.Game do
   end
 
   defp update_player(%__MODULE__{} = game, id, update_fn) when is_integer(id) do
-    game = %{
-      game
-      | players: Enum.map(game.players, fn p -> if p.id == id, do: update_fn.(p), else: p end)
-    }
+    case Enum.find(game.players, fn p -> p.id == id end) do
+      nil ->
+        {:error, "Player not found"}
 
-    {:ok, game}
+      player ->
+        updated_player = update_fn.(player)
+
+        game = %{
+          game
+          | players:
+              Enum.map(game.players, fn p -> if p.id == id, do: updated_player, else: p end)
+        }
+
+        {:ok, game}
+    end
   end
 
   def json_representation(%__MODULE__{} = game) do

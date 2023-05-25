@@ -42,4 +42,13 @@ defmodule Tictactoe.GameTest do
 
     assert game.players == [%Player{id: 1, name: "Player 1 Updated", team: "X", wins: 0}]
   end
+
+  test "update player name when player id is invalid" do
+    game = Game.new("update-test")
+
+    {:ok, player, game} = Game.add_player(game, "Player 1")
+    {:error, msg} = Game.update_player_name(game, 2, "Player 1 Updated")
+
+    assert msg == "Player not found"
+  end
 end
