@@ -8,12 +8,10 @@ defmodule Tictactoe.GameRegistry do
 
   require Logger
 
-  # alias Tictactoe.GameRegistry
-  alias Tictactoe.GameRegistry
   alias Tictactoe.GameServer
 
-  def start_link(init_arg) do
-    GenServer.start_link(__MODULE__, init_arg, name: Tictactoe.GameRegistry)
+  def start_link(opts) do
+    GenServer.start_link(__MODULE__, nil, opts)
   end
 
   @impl true
@@ -25,11 +23,10 @@ defmodule Tictactoe.GameRegistry do
   end
 
   @doc """
-  Lookup a game pid by its id/join token. If the game is not found, start a new one.
-  Returns the pid of the game.
+  Lookup a game pid by its id/join token. If the game is not found, start a new
+  one. Returns the pid of the game.
   """
-  @spec lookup_or_start_game(GameRegistry, String.t()) :: {:ok, pid}
-  def lookup_or_start_game(registry, id) when is_binary(id) do
+  def lookup_or_start_game(registry, id) when is_pid(registry) and is_binary(id) do
     # Logger.debug(fn -> "GameRegistry.lookup_or_start_game: #{inspect(id)}" end)
 
     # Perform a concurrent lookup first, before performing
