@@ -87,7 +87,7 @@ defmodule Tictactoe.Game do
           nil ->
             {:error, "Player not found"}
 
-          %Player{id: ^id, team: team} = player ->
+          %Player{id: ^id, team: team} ->
             if game.turn != team do
               {:error, "Not your turn"}
             else
@@ -103,8 +103,8 @@ defmodule Tictactoe.Game do
   defp take_turn_happy_path(game, team, space) do
     game = %{
       game
-      | board: Enum.map_index(game.board, fn i, v -> if i == space, do: team, else: v end)
-        # turn: if team == "X", do: "O", else: "X"
+      | board: List.update_at(game.board, space, fn _ -> team end),
+        turn: if(team == "X", do: "O", else: "X")
     }
 
     {:ok, game}
