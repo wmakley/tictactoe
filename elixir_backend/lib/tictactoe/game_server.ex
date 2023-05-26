@@ -63,7 +63,7 @@ defmodule Tictactoe.GameServer do
 
   @impl true
   def handle_call({:add_chat_message, player_id, text}, _from, state) do
-    case Game.add_chat_message(state, player_id, text) do
+    case Game.add_player_chat_message(state, player_id, text) do
       {:ok, game} ->
         {:reply, {:ok, game}, game}
 

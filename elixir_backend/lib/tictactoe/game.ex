@@ -35,13 +35,37 @@ defmodule Tictactoe.Game do
 
   defp add_player(%__MODULE__{} = game, name, id, team) do
     player = %Player{id: id, name: name, team: team}
-    game = %{game | players: game.players ++ [player]}
+
+    game =
+      %{game | players: game.players ++ [player]}
+      |> add_chat_message(:system, "#{name} (#{team}) has joined the game")
+
     {:ok, player, game}
   end
 
   def update_player_name(%__MODULE__{} = game, id, name)
       when is_integer(id) and is_binary(name) do
-    update_player(game, id, fn p -> %{p | name: name} end)
+    trimmed = String.trim(name)
+
+    normalized =
+      case trimmed do
+        "" ->
+          "Unnamed Player"
+
+        _ ->
+          trimmed
+      end
+
+    with {:ok, game} <- update_player(game, id, fn p -> %{p | name: normalized} end) do
+      game =
+        game
+        |> add_chat_message({:player, id}, "Now my name is \"#{normalized}\"!")
+
+      {:ok, game}
+    else
+      {:error, reason} ->
+        {:error, reason}
+    end
   end
 
   defp update_player(%__MODULE__{} = game, id, update_fn) when is_integer(id) do
@@ -89,28 +113,21 @@ defmodule Tictactoe.Game do
     end
   end
 
-  def add_chat_message(%__MODULE__{} = game, player_id, message)
+  @doc """
+  Attempt to add a player chat message to the game,
+  with validation and normalization (trimming).
+  """
+  @spec add_player_chat_message(%__MODULE__{}, integer, String.t()) ::
+          {:ok, %__MODULE__{}} | {:error, String.t()}
+  def add_player_chat_message(%__MODULE__{} = game, player_id, message)
       when is_integer(player_id) and is_binary(message) do
     with {:ok, _} <- find_player(game, player_id),
-         {:ok, message} <- validate_chat_msg(message) do
-      chat_message = %ChatMessage{
-        id: length(game.chat) + 1,
-        source: ChatMessage.player_source(player_id),
-        text: message
-      }
-
-      {:ok, append_chat_message(game, chat_message)}
+         {:ok, trimmed} <- validate_chat_msg(message) do
+      {:ok, add_chat_message(game, {:player, player_id}, trimmed)}
     else
       {:error, reason} ->
         {:error, reason}
     end
-  end
-
-  defp append_chat_message(%__MODULE__{} = game, %ChatMessage{} = chat_message) do
-    %{
-      game
-      | chat: game.chat ++ [chat_message]
-    }
   end
 
   @spec validate_chat_msg(text :: String.t()) :: {:ok, String.t()} | {:error, String.t()}
@@ -128,6 +145,15 @@ defmodule Tictactoe.Game do
       true ->
         {:ok, trimmed}
     end
+  end
+
+  defp add_chat_message(%__MODULE__{} = game, source, text) do
+    chat_message = ChatMessage.new(length(game.chat) + 1, source, text)
+
+    %{
+      game
+      | chat: game.chat ++ [chat_message]
+    }
   end
 
   def take_turn(%__MODULE__{players: players} = game, id, space)
@@ -161,6 +187,7 @@ defmodule Tictactoe.Game do
     {:ok, game}
   end
 
+  @spec json_representation(%__MODULE__{}) :: map()
   def json_representation(%__MODULE__{} = game) do
     %{
       board: game.board,

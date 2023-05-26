@@ -23,6 +23,14 @@ defmodule Tictactoe.GameTest do
     assert player == %Player{id: 1, name: "Player 1", team: "X", wins: 0}
     assert game.players == [%Player{id: 1, name: "Player 1", team: "X", wins: 0}]
 
+    assert game.chat == [
+             %ChatMessage{
+               id: 1,
+               source: :system,
+               text: "Player 1 (X) has joined the game"
+             }
+           ]
+
     {:ok, player, game} = Game.add_player(game, "Player 2")
     assert player == %Player{id: 2, name: "Player 2", team: "O", wins: 0}
 
@@ -42,6 +50,12 @@ defmodule Tictactoe.GameTest do
     {:ok, game} = Game.update_player_name(game, player.id, "Player 1 Updated")
 
     assert game.players == [%Player{id: 1, name: "Player 1 Updated", team: "X", wins: 0}]
+
+    assert List.last(game.chat) == %ChatMessage{
+             id: 2,
+             source: {:player, 1},
+             text: "Now my name is \"Player 1 Updated\"!"
+           }
   end
 
   test "update player name when player id is invalid" do
@@ -88,26 +102,51 @@ defmodule Tictactoe.GameTest do
     {:ok, p1, game} = Game.add_player(game, "Player 1")
     {:ok, p2, game} = Game.add_player(game, "Player 2")
 
-    {:error, reason} = Game.add_chat_message(game, p1.id, "  ")
-    assert reason == "Empty message"
-
-    {:error, reason} = Game.add_chat_message(game, 999, "valid message")
-    assert reason == "Player not found"
-
-    {:error, reason} = Game.add_chat_message(game, p2.id, String.duplicate("a", 501))
-    assert reason == "Message cannot be longer than 500 characters"
-
-    {:ok, game} = Game.add_chat_message(game, p1.id, "valid message")
-
     assert game.chat == [
-             %ChatMessage{id: 1, source: {:player, p1.id}, text: "valid message"}
+             %ChatMessage{
+               id: 1,
+               source: :system,
+               text: "Player 1 (X) has joined the game"
+             },
+             %ChatMessage{
+               id: 2,
+               source: :system,
+               text: "Player 2 (O) has joined the game"
+             }
            ]
 
-    {:ok, game} = Game.add_chat_message(game, p2.id, "valid message 2")
+    {:error, reason} = Game.add_player_chat_message(game, p1.id, "")
+    assert reason == "Empty message"
+
+    {:error, reason} = Game.add_player_chat_message(game, p1.id, "  ")
+    assert reason == "Empty message"
+
+    {:error, reason} = Game.add_player_chat_message(game, 999, "valid message")
+    assert reason == "Player not found"
+
+    {:error, reason} = Game.add_player_chat_message(game, p2.id, String.duplicate("a", 501))
+    assert reason == "Message cannot be longer than 500 characters"
+
+    {:ok, game} = Game.add_player_chat_message(game, p1.id, "valid message")
+
+    assert List.last(game.chat) ==
+             %ChatMessage{id: 3, source: {:player, p1.id}, text: "valid message"}
+
+    {:ok, game} = Game.add_player_chat_message(game, p2.id, "valid message 2")
 
     assert game.chat == [
-             %ChatMessage{id: 1, source: {:player, p1.id}, text: "valid message"},
-             %ChatMessage{id: 2, source: {:player, p2.id}, text: "valid message 2"}
+             %ChatMessage{
+               id: 1,
+               source: :system,
+               text: "Player 1 (X) has joined the game"
+             },
+             %ChatMessage{
+               id: 2,
+               source: :system,
+               text: "Player 2 (O) has joined the game"
+             },
+             %ChatMessage{id: 3, source: {:player, p1.id}, text: "valid message"},
+             %ChatMessage{id: 4, source: {:player, p2.id}, text: "valid message 2"}
            ]
   end
 end
