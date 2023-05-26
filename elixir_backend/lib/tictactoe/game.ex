@@ -5,7 +5,8 @@ defmodule Tictactoe.Game do
     board: [" ", " ", " ", " ", " ", " ", " ", " ", " "],
     turn: "X",
     winner: nil,
-    chat: []
+    chat: [],
+    next_chat_id: 1
   ]
 
   alias Tictactoe.Player
@@ -148,11 +149,12 @@ defmodule Tictactoe.Game do
   end
 
   defp add_chat_message(%__MODULE__{} = game, source, text) do
-    chat_message = ChatMessage.new(length(game.chat) + 1, source, text)
+    chat_message = ChatMessage.new(game.next_chat_id, source, text)
 
     %{
       game
-      | chat: game.chat ++ [chat_message]
+      | chat: game.chat ++ [chat_message],
+        next_chat_id: game.next_chat_id + 1
     }
   end
 
