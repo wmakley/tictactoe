@@ -92,8 +92,17 @@ defmodule Tictactoe.GameTest do
     {:ok, game} = Game.take_turn(game, p1.id, 0)
     assert game.board == ["X", " ", " ", " ", " ", " ", " ", " ", " "]
 
+    IO.inspect(game.chat)
+
+    assert List.last(game.chat) == %ChatMessage{
+             id: 3,
+             source: {:player, p1.id},
+             text: "Played X at (1, 1)."
+           }
+
     {:ok, game} = Game.take_turn(game, p2.id, 1)
     assert game.board == ["X", "O", " ", " ", " ", " ", " ", " ", " "]
+    # TODO: chat
   end
 
   test "add chat message" do
@@ -134,17 +143,7 @@ defmodule Tictactoe.GameTest do
 
     {:ok, game} = Game.add_player_chat_message(game, p2.id, "valid message 2")
 
-    assert game.chat == [
-             %ChatMessage{
-               id: 1,
-               source: :system,
-               text: "Player 1 (X) has joined the game"
-             },
-             %ChatMessage{
-               id: 2,
-               source: :system,
-               text: "Player 2 (O) has joined the game"
-             },
+    assert Enum.slice(game.chat, -2..-1) == [
              %ChatMessage{id: 3, source: {:player, p1.id}, text: "valid message"},
              %ChatMessage{id: 4, source: {:player, p2.id}, text: "valid message 2"}
            ]

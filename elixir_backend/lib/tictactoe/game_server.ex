@@ -21,6 +21,7 @@ defmodule Tictactoe.GameServer do
     GenServer.call(pid, {:add_player, name})
   end
 
+  @spec handle_message_from_browser(pid, integer, map) :: any
   def handle_message_from_browser(pid, player_id, %{} = json)
       when is_pid(pid) and is_integer(player_id) do
     case json do

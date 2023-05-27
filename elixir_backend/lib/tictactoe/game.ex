@@ -158,6 +158,8 @@ defmodule Tictactoe.Game do
     }
   end
 
+  @spec take_turn(%__MODULE__{}, integer, integer) ::
+          {:ok, %__MODULE__{}} | {:error, String.t()}
   def take_turn(%__MODULE__{players: players} = game, id, space)
       when is_integer(id) and is_integer(space) do
     case length(players) do
@@ -166,11 +168,16 @@ defmodule Tictactoe.Game do
           {:error, reason} ->
             {:error, reason}
 
-          {:ok, %Player{team: team}} ->
-            if game.turn != team do
-              {:error, "Not your turn"}
-            else
-              take_turn_happy_path(game, team, space)
+          {:ok, player} ->
+            cond do
+              game.winner != nil ->
+                {:error, "Game is over"}
+
+              game.turn != player.team ->
+                {:error, "Not your turn"}
+
+              true ->
+                {:ok, take_turn_happy_path(game, player, space)}
             end
         end
 
@@ -179,18 +186,75 @@ defmodule Tictactoe.Game do
     end
   end
 
-  defp take_turn_happy_path(game, team, space) do
+  @spec take_turn_happy_path(%__MODULE__{}, %Player{}, integer) ::
+          %__MODULE__{}
+  defp take_turn_happy_path(game, player, space) do
     game = %{
       game
-      | board: List.update_at(game.board, space, fn _ -> team end),
-        turn: if(team == "X", do: "O", else: "X")
+      | board: List.update_at(game.board, space, fn _ -> player.team end),
+        turn: if(player.team == "X", do: "O", else: "X")
     }
 
-    {:ok, game}
+    game =
+      add_chat_message(
+        game,
+        {:player, player.id},
+        "Played #{player.team} at (#{rem(space, 3) + 1}, #{div(space, 3) + 1})."
+      )
+
+    winner = check_for_win(game)
+
+    case winner do
+      nil ->
+        if check_for_draw(game) do
+          %{game | winner: :draw}
+          |> add_chat_message(:system, "It's a draw!")
+        else
+          game
+        end
+
+      {:team, winner} ->
+        %{game | winner: winner}
+        |> add_chat_message(:system, "#{Player.to_string(player)} wins!")
+    end
   end
 
-  @spec json_representation(%__MODULE__{}) :: map()
-  def json_representation(%__MODULE__{} = game) do
+  @spec check_for_win(game :: %__MODULE__{}) :: {:team, String.t()} | nil
+  defp check_for_win(game) do
+    winning_combinations = [
+      [0, 1, 2],
+      [3, 4, 5],
+      [6, 7, 8],
+      [0, 3, 6],
+      [1, 4, 7],
+      [2, 5, 8],
+      [0, 4, 8],
+      [2, 4, 6]
+    ]
+
+    Enum.reduce(winning_combinations, nil, fn [a, b, c], winner ->
+      if winner != nil do
+        winner
+      else
+        if Enum.all?([a, b, c], fn i -> Enum.at(game.board, i) == "X" end) do
+          {:team, "X"}
+        else
+          if Enum.all?([a, b, c], fn i -> Enum.at(game.board, i) == "O" end) do
+            {:team, "O"}
+          else
+            nil
+          end
+        end
+      end
+    end)
+  end
+
+  defp check_for_draw(game) do
+    Enum.all?(game.board, fn space -> space != " " end)
+  end
+
+  @spec to_json(%__MODULE__{}) :: map()
+  def to_json(%__MODULE__{} = game) do
     %{
       board: game.board,
       chat: game.chat |> Enum.map(&ChatMessage.json_representation/1),
@@ -216,6 +280,6 @@ end
 
 defimpl Jason.Encoder, for: Tictactoe.Game do
   def encode(game, opts) do
-    Jason.Encode.map(Tictactoe.Game.json_representation(game), opts)
+    Jason.Encode.map(Tictactoe.Game.to_json(game), opts)
   end
 end
