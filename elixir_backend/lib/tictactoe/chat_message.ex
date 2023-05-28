@@ -30,8 +30,8 @@ defmodule Tictactoe.ChatMessage do
     :system
   end
 
-  @spec json_representation(%__MODULE__{}) :: map
-  def json_representation(%__MODULE__{} = msg) do
+  @spec to_json(%__MODULE__{}) :: map
+  def to_json(%__MODULE__{} = msg) do
     source =
       case msg.source do
         {:player, id} ->
@@ -50,9 +50,7 @@ defmodule Tictactoe.ChatMessage do
 end
 
 defimpl Jason.Encoder, for: Tictactoe.ChatMessage do
-  alias Tictactoe.ChatMessage
-
   def encode(msg, opts) do
-    Jason.Encode.map(ChatMessage.json_representation(msg), opts)
+    Jason.Encode.map(Tictactoe.ChatMessage.to_json(msg), opts)
   end
 end

@@ -92,8 +92,6 @@ defmodule Tictactoe.GameTest do
     {:ok, game} = Game.take_turn(game, p1.id, 0)
     assert game.board == ["X", " ", " ", " ", " ", " ", " ", " ", " "]
 
-    IO.inspect(game.chat)
-
     assert List.last(game.chat) == %ChatMessage{
              id: 3,
              source: {:player, p1.id},

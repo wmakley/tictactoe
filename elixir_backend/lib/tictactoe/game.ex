@@ -202,9 +202,7 @@ defmodule Tictactoe.Game do
         "Played #{player.team} at (#{rem(space, 3) + 1}, #{div(space, 3) + 1})."
       )
 
-    winner = check_for_win(game)
-
-    case winner do
+    case check_for_win(game) do
       nil ->
         if check_for_draw(game) do
           %{game | winner: :draw}
@@ -257,8 +255,8 @@ defmodule Tictactoe.Game do
   def to_json(%__MODULE__{} = game) do
     %{
       board: game.board,
-      chat: game.chat |> Enum.map(&ChatMessage.json_representation/1),
-      players: game.players,
+      chat: game.chat |> Enum.map(&ChatMessage.to_json/1),
+      players: game.players |> Enum.map(&Player.to_json/1),
       turn: game.turn,
       winner:
         case game.winner do
