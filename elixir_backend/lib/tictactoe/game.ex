@@ -253,6 +253,32 @@ defmodule Tictactoe.Game do
     Enum.all?(game.board, fn space -> space != " " end)
   end
 
+  def rematch(%__MODULE__{} = game, player_id) do
+    game
+    |> reset
+    |> swap_teams
+    |> add_chat_message({:player, player_id}, "Rematch!")
+  end
+
+  defp reset(game) do
+    %{
+      game
+      | board: [" ", " ", " ", " ", " ", " ", " ", " ", " "],
+        turn: "X",
+        winner: nil
+    }
+  end
+
+  defp swap_teams(game) do
+    %{
+      game
+      | players:
+          Enum.map(game.players, fn player ->
+            %Player{player | team: if(player.team == "X", do: "O", else: "X")}
+          end)
+    }
+  end
+
   @spec to_json(%__MODULE__{}) :: map()
   def to_json(%__MODULE__{} = game) do
     %{

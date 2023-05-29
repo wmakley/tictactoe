@@ -30,7 +30,7 @@ defmodule Tictactoe.GameServer do
   def handle_message_from_browser(pid, player_id, %{} = json)
       when is_pid(pid) and is_integer(player_id) do
     case json do
-      %{"ChatMsg" => text} ->
+      %{"ChatMsg" => %{"text" => text}} ->
         GenServer.call(pid, {:add_chat_message, player_id, text})
 
         # TODO
@@ -41,29 +41,38 @@ defmodule Tictactoe.GameServer do
 
   @impl true
   def init(id) do
-    {:ok, Game.new(id)}
+    {:ok,
+     %{
+       subscriptions: [],
+       game: Game.new(id)
+     }}
   end
 
   @impl true
-  def handle_call({:add_player, name}, _from, game) do
-    case Game.add_player(game, name) do
+  def handle_call({:add_player, name}, caller, state) do
+    case Game.add_player(state.game, name) do
       {:ok, player, game} ->
-        {:reply, {:ok, player}, game}
+        {:reply, {:ok, player},
+         %{
+           state
+           | game: game,
+             subscriptions: [{:player, caller, player.id} | state.subscriptions]
+         }}
 
       {:error, reason, game} ->
-        {:reply, {:error, reason}, game}
+        {:reply, {:error, reason}, %{state | game: game}}
     end
   end
 
   @impl true
-  def handle_call({:update_player_name, player_id, new_name}, _from, game)
+  def handle_call({:update_player_name, player_id, new_name}, _from, state)
       when is_integer(player_id) and is_binary(new_name) do
-    case Game.update_player_name(game, player_id, new_name) do
+    case Game.update_player_name(state.game, player_id, new_name) do
       {:ok, game} ->
-        {:reply, {:ok, game}, game}
+        {:reply, {:ok, game}, %{state | game: game}}
 
       {:error, reason} ->
-        {:reply, {:error, reason}, game}
+        {:reply, {:error, reason}, state}
     end
   end
 
@@ -79,29 +88,33 @@ defmodule Tictactoe.GameServer do
   end
 
   @impl true
-  def handle_call({:take_turn, player_id, position}, _from, game)
+  def handle_call({:take_turn, player_id, position}, _from, state)
       when is_integer(player_id) and is_integer(position) do
-    case Game.take_turn(game, player_id, position) do
+    case Game.take_turn(state.game, player_id, position) do
       {:ok, game} ->
-        {:reply, {:ok, game}, game}
+        {:reply, {:ok, game}, %{state | game: game}}
 
       {:error, reason} ->
-        {:reply, {:error, reason}, game}
+        {:reply, {:error, reason}, state}
     end
   end
 
   @impl true
-  def handle_cast({:disconnect, player_id}, game) do
+  def handle_cast({:disconnect, player_id}, %{game: game} = state) do
+    Logger.debug(fn ->
+      "#{inspect(self())} GameServer.handle_cast({:disconnect, #{inspect(player_id)}})"
+    end)
+
     case Game.remove_player(game, player_id) do
       {:ok, game} ->
-        {:noreply, game}
+        {:noreply, %{state | game: game}}
 
       {:error, reason} ->
         Logger.error(fn ->
           "Failed to remove player id #{inspect(player_id)}: #{inspect(reason)}"
         end)
 
-        {:noreply, game}
+        {:noreply, state}
     end
   end
 end

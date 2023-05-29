@@ -22,11 +22,16 @@ defmodule Tictactoe.GameRegistry do
     {:ok, {pids, ids}}
   end
 
+  def random_id() do
+    :crypto.strong_rand_bytes(8) |> Base.encode64()
+  end
+
   @doc """
   Lookup a game pid by its id/join token. If the game is not found, start a new
   one. Returns the pid of the game.
   """
-  def lookup_or_start_game(registry, id) when is_pid(registry) and is_binary(id) do
+  @spec lookup_or_start_game(pid | atom, String.t()) :: {:ok, pid}
+  def lookup_or_start_game(registry, id) when is_binary(id) do
     # Logger.debug(fn -> "GameRegistry.lookup_or_start_game: #{inspect(id)}" end)
 
     # Perform a concurrent lookup first, before performing
