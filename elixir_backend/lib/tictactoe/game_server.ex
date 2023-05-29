@@ -16,7 +16,8 @@ defmodule Tictactoe.GameServer do
 
   ## Public API
 
-  @spec add_player(pid, String.t()) :: {:error, String.t()} | {:ok, Tictactoe.Player.t()}
+  @spec add_player(pid, String.t()) ::
+          {:error, String.t()} | {:ok, Tictactoe.Player.t(), Game.t()}
   def add_player(pid, name) when is_pid(pid) and is_binary(name) do
     GenServer.call(pid, {:add_player, name})
   end
@@ -26,15 +27,10 @@ defmodule Tictactoe.GameServer do
     GenServer.cast(pid, {:disconnect, player_id})
   end
 
-  @spec handle_message_from_browser(pid, integer, map) :: any
-  def handle_message_from_browser(pid, player_id, %{} = json)
-      when is_pid(pid) and is_integer(player_id) do
-    case json do
-      %{"ChatMsg" => %{"text" => text}} ->
-        GenServer.call(pid, {:add_chat_message, player_id, text})
-
-        # TODO
-    end
+  @spec add_chat_message(atom | pid | {atom, any} | {:via, atom, any}, integer, String.t()) ::
+          {:ok, Game.t()} | {:error, String.t()}
+  def add_chat_message(pid, player_id, text) do
+    GenServer.call(pid, {:add_chat_message, player_id, text})
   end
 
   ## Private Handlers
@@ -52,7 +48,7 @@ defmodule Tictactoe.GameServer do
   def handle_call({:add_player, name}, caller, state) do
     case Game.add_player(state.game, name) do
       {:ok, player, game} ->
-        {:reply, {:ok, player},
+        {:reply, {:ok, player, game},
          %{
            state
            | game: game,
@@ -78,9 +74,9 @@ defmodule Tictactoe.GameServer do
 
   @impl true
   def handle_call({:add_chat_message, player_id, text}, _from, state) do
-    case Game.add_player_chat_message(state, player_id, text) do
+    case Game.add_player_chat_message(state.game, player_id, text) do
       {:ok, game} ->
-        {:reply, {:ok, game}, game}
+        {:reply, {:ok, game}, %{state | game: game}}
 
       {:error, reason} ->
         {:reply, {:error, reason}, state}
