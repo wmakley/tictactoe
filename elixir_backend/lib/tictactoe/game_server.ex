@@ -21,6 +21,11 @@ defmodule Tictactoe.GameServer do
     GenServer.call(pid, {:add_player, name})
   end
 
+  @spec disconnect(pid, integer) :: :ok
+  def disconnect(pid, player_id) when is_pid(pid) and is_integer(player_id) do
+    GenServer.cast(pid, {:disconnect, player_id})
+  end
+
   @spec handle_message_from_browser(pid, integer, map) :: any
   def handle_message_from_browser(pid, player_id, %{} = json)
       when is_pid(pid) and is_integer(player_id) do
@@ -82,6 +87,21 @@ defmodule Tictactoe.GameServer do
 
       {:error, reason} ->
         {:reply, {:error, reason}, game}
+    end
+  end
+
+  @impl true
+  def handle_cast({:disconnect, player_id}, game) do
+    case Game.remove_player(game, player_id) do
+      {:ok, game} ->
+        {:noreply, game}
+
+      {:error, reason} ->
+        Logger.error(fn ->
+          "Failed to remove player id #{inspect(player_id)}: #{inspect(reason)}"
+        end)
+
+        {:noreply, game}
     end
   end
 end

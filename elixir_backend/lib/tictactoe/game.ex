@@ -104,11 +104,13 @@ defmodule Tictactoe.Game do
       {:error, reason} ->
         {:error, reason}
 
-      {:ok, _} ->
-        game = %{
-          game
-          | players: Enum.filter(game.players, fn p -> p.id != id end)
-        }
+      {:ok, player} ->
+        game =
+          %{
+            game
+            | players: Enum.filter(game.players, fn p -> p.id != id end)
+          }
+          |> add_chat_message(:system, "#{Player.to_string(player)} has left the game")
 
         {:ok, game}
     end
