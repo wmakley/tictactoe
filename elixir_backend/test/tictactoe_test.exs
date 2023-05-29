@@ -3,11 +3,11 @@ defmodule TictactoeTest do
   use Plug.Test
   doctest Tictactoe
 
-  test "help text" do
-    conn = conn(:get, "/")
-    conn = Tictactoe.Router.call(conn, [])
-    assert conn.status == 200
-  end
+  # test "help text" do
+  #   conn = conn(:get, "/")
+  #   conn = Tictactoe.Router.call(conn, [])
+  #   assert conn.status == 200
+  # end
 
   # ignored: the documentation isn't even right
   # test "websocket upgrade succeeds" do

@@ -12,16 +12,6 @@ defmodule Tictactoe.Router do
   plug(Plug.Parsers, parsers: [:urlencoded, :multipart], validate_utf8: true)
   plug(:dispatch)
 
-  get "/" do
-    send_resp(conn, 200, """
-    Use the JavaScript console to interact using websockets
-
-    let sock = new WebSocket("ws://localhost:3000/ws")
-    sock.addEventListener("message", console.log)
-    sock.addEventListener("open", () => sock.send("ping"))
-    """)
-  end
-
   get "/ws" do
     # Logger.debug(fn -> inspect(conn) end)
 
@@ -30,12 +20,6 @@ defmodule Tictactoe.Router do
 
     conn
     |> WebSockAdapter.upgrade(Tictactoe.PlayerConn, [name: name, token: token], timeout: 60_000)
-    |> halt()
-  end
-
-  get "/echo" do
-    conn
-    |> WebSockAdapter.upgrade(Tictactoe.EchoServer, [], timeout: 60_000)
     |> halt()
   end
 
