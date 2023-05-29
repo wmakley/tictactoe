@@ -33,7 +33,6 @@ defmodule Tictactoe.MixProject do
       {:plug, "~> 1.14"},
       # {:plug_cowboy, "~> 2.0"}
       {:bandit, ">= 1.0.0-pre.3"},
-      {:websock, "~> 0.5.1"},
       {:websock_adapter, "~> 0.5.1"},
       {:jason, "~> 1.4.0"}
       # {:dep_from_hexpm, "~> 0.3.0"},
