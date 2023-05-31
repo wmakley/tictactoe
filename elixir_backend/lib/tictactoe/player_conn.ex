@@ -4,6 +4,8 @@ defmodule Tictactoe.PlayerConn do
 
   require Logger
 
+  @spec init(Keyword.t()) ::
+          {:push, {:text, String.t()}, %{game: pid, player: Tictactoe.Player.t()}}
   def init([name: name, token: token] = options) do
     Logger.debug(fn -> "#{inspect(self())} PlayerConn.init(#{inspect(options)})" end)
 
@@ -16,21 +18,26 @@ defmodule Tictactoe.PlayerConn do
           token
       end
 
-    {:ok, game} = GameRegistry.lookup_or_start_game(GameRegistry, id)
-    {:ok, player, game_state} = GameServer.add_player(game, name)
+    {:ok, game_pid} = GameRegistry.lookup_or_start_game(GameRegistry, id)
+    {:ok, player, game_state} = GameServer.add_player(game_pid, name)
 
     # TODO: Game crash should kill connection.
     # TODO: Connection crash should remove the player from game.
 
-    response = %{
+    {:push, joined_game_response(player, game_state), %{game: game_pid, player: player}}
+  end
+
+  @spec joined_game_response(Tictactoe.Player.t(), Tictactoe.Game.t()) :: {:text, String.t()}
+  defp joined_game_response(player, game_state) do
+    json = %{
       "JoinedGame" => %{
-        "token" => id,
+        "token" => game_state.id,
         "player_id" => player.id,
         "state" => game_state
       }
     }
 
-    {:push, {:text, Jason.encode!(response)}, %{game: game, player: player}}
+    {:text, Jason.encode!(json)}
   end
 
   def handle_in({msg, [opcode: :text]}, %{game: game, player: player} = state) do
@@ -41,7 +48,7 @@ defmodule Tictactoe.PlayerConn do
     json = Jason.decode!(msg)
     Logger.debug(fn -> "#{inspect(self())} Decoded JSON: #{inspect(json)}" end)
 
-    state_or_error =
+    game_state_or_error =
       case json do
         %{"ChatMsg" => %{"text" => text}} ->
           GameServer.add_chat_message(game, player.id, text)
@@ -49,34 +56,39 @@ defmodule Tictactoe.PlayerConn do
           # TODO
       end
 
-    case state_or_error do
-      {:ok, game} ->
-        {:reply, :ok, {:text, Jason.encode!(%{"GameState" => game})}, state}
+    case game_state_or_error do
+      {:ok, game_state} ->
+        {:reply, :ok, game_state_response(game_state), state}
 
       {:error, reason} ->
-        {:reply, :ok, {:text, Jason.encode!(%{"Error" => reason})}, state}
+        {:reply, :ok, error_response(reason), state}
     end
   end
 
-  def handle_info({:game_state, _}, state) do
-    Logger.debug(fn ->
-      "#{inspect(self())} PlayerConn.handle_info(:game_state, #{inspect(state)})"
-    end)
-
-    {:noreply, state}
+  @spec game_state_response(Tictactoe.Game.t()) :: {:text, String.t()}
+  defp game_state_response(game) do
+    {:text, Jason.encode!(%{"GameState" => game})}
   end
 
-  @spec terminate(any, %{
-          :game => pid,
-          :player => atom | %{:id => integer, optional(any) => any},
-          optional(any) => any
-        }) :: {:ok, %{:game => pid, :player => atom | map, optional(any) => any}}
-  def terminate(reason, %{player: player, game: game} = state) do
+  @spec error_response(String.t()) :: {:text, String.t()}
+  defp error_response(reason) do
+    {:text, Jason.encode!(%{"Error" => reason})}
+  end
+
+  def handle_info({:game_state, game_state} = params, state) do
     Logger.debug(fn ->
-      "#{inspect(self())} PlayerConn.terminate(#{inspect(reason)}, #{inspect(state)})"
+      "#{inspect(self())} PlayerConn.handle_info(#{inspect(params)})"
     end)
 
-    GameServer.disconnect(game, player.id)
+    {:push, game_state_response(game_state), state}
+  end
+
+  def terminate(reason, %{player: player, game: game} = state) do
+    Logger.debug(fn ->
+      "#{inspect(self())} PlayerConn.terminate(#{inspect(reason)}, #{inspect(player)})"
+    end)
+
+    GameServer.disconnect(self(), game, player.id)
 
     {:ok, state}
   end
