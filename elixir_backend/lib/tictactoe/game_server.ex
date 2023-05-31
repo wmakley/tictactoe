@@ -33,15 +33,32 @@ defmodule Tictactoe.GameServer do
     GenServer.call(pid, {:add_chat_message, player_id, text})
   end
 
+  @doc """
+  Subscribe a process to receive game state updates.
+  """
+  @spec subscribe(pid, pid) :: :ok
+  def subscribe(game_pid, subscriber_pid \\ self())
+      when is_pid(game_pid) and is_pid(subscriber_pid) do
+    GenServer.call(game_pid, {:subscribe, subscriber_pid})
+  end
+
+  @doc """
+  Dump the server state.
+  """
+  @spec dump_state(pid) :: any
+  def dump_state(pid) do
+    GenServer.call(pid, :dump_state)
+  end
+
   ## Private Handlers
 
   @impl true
   def init(id) do
-    Logger.debug(fn -> "#{inspect(self())} GameServer.init(#{inspect(id)})" end)
+    # Logger.debug(fn -> "#{inspect(self())} GameServer.init(#{inspect(id)})" end)
 
     {:ok,
      %{
-       subscriptions: [],
+       subscriptions: %{},
        game: Game.new(id)
      }}
   end
@@ -59,13 +76,21 @@ defmodule Tictactoe.GameServer do
         {:reply, {:ok, player, game},
          %{
            state
-           | game: game,
-             subscriptions: [caller | state.subscriptions]
-         }}
+           | game: game
+         }
+         |> add_subscription(caller)}
 
       {:error, reason, game} ->
         {:reply, {:error, reason}, %{state | game: game}}
     end
+  end
+
+  def handle_call({:subscribe, pid}, _from, state) when is_pid(pid) do
+    Logger.debug(fn ->
+      "#{inspect(self())} GameServer.handle_call(:subscribe, #{inspect(pid)})"
+    end)
+
+    {:reply, :ok, add_subscription(state, pid)}
   end
 
   @impl true
@@ -115,13 +140,18 @@ defmodule Tictactoe.GameServer do
     end
   end
 
+  # Dump the state of the server, for debugging
+  def handle_call(:dump_state, _from, state) do
+    {:reply, state, state}
+  end
+
   @impl true
   def handle_cast({:disconnect, caller, player_id} = params, %{game: game} = state) do
     Logger.debug(fn ->
       "#{inspect(self())} GameServer.handle_cast(#{inspect(params)})"
     end)
 
-    state = remove_subscription(caller, state)
+    state = remove_subscription(state, caller)
 
     case Game.remove_player(game, player_id) do
       {:ok, game} ->
@@ -136,27 +166,60 @@ defmodule Tictactoe.GameServer do
     end
   end
 
-  defp notify_subscribers(state) do
+  @impl true
+  def handle_info({:DOWN, _ref, :process, pid, _reason} = params, state) when is_pid(pid) do
     Logger.debug(fn ->
-      "#{inspect(self())} GameServer.notify_subscribers(#{inspect(state.subscriptions)})"
+      "#{inspect(self())} GameServer.handle_info(#{inspect(params)})"
     end)
 
-    Enum.each(state.subscriptions, fn subscriber ->
+    {:noreply, remove_subscription(state, pid)}
+  end
+
+  defp add_subscription(state, pid, player_id \\ nil) when is_pid(pid) do
+    ref = Process.monitor(pid)
+    %{state | subscriptions: Map.put(state.subscriptions, pid, {ref, player_id})}
+  end
+
+  defp remove_subscription(state, pid) when is_pid(pid) do
+    Logger.debug("#{inspect(self())} GameServer.remove_subscription(#{inspect(pid)})")
+
+    {ref, player_id} = Map.get(state.subscriptions, pid)
+
+    Process.demonitor(ref)
+
+    state = %{
+      state
+      | subscriptions: Map.delete(state.subscriptions, pid)
+    }
+
+    if player_id != nil do
+      case Game.remove_player(state.game, player_id) do
+        {:ok, game} ->
+          %{state | game: game} |> notify_subscribers()
+
+        {:error, reason} ->
+          Logger.error(fn ->
+            "Failed to remove player id #{inspect(player_id)}: #{inspect(reason)}"
+          end)
+
+          {:error, reason}
+      end
+    else
+      state
+    end
+  end
+
+  defp notify_subscribers(state) do
+    subscribers = Map.keys(state.subscriptions)
+
+    Logger.debug(fn ->
+      "#{inspect(self())} GameServer.notify_subscribers(#{inspect(subscribers)})"
+    end)
+
+    Enum.each(subscribers, fn subscriber ->
       :ok = Process.send(subscriber, {:game_state, state.game}, [])
     end)
 
     state
-  end
-
-  defp remove_subscription(pid, state) do
-    Logger.debug("#{inspect(self())} GameServer.remove_subscription(#{inspect(pid)})")
-
-    %{
-      state
-      | subscriptions:
-          Enum.filter(state.subscriptions, fn subscriber ->
-            subscriber != pid
-          end)
-    }
   end
 end

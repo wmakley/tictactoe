@@ -5,17 +5,25 @@ defmodule Tictactoe.GameServerTest do
   alias Tictactoe.GameServer
   alias Tictactoe.Player
   alias Tictactoe.ChatMessage
+  alias Tictactoe.FakePlayer
 
   setup do
-    game = start_link_supervised!({GameServer, random_int_id()})
-    {:ok, %{game: game}}
+    game_id = random_int_id()
+    game = start_link_supervised!({GameServer, game_id})
+    {:ok, %{game: game, game_id: game_id}}
   end
 
   defp random_int_id() do
     Integer.to_string(:rand.uniform(1_000_000))
   end
 
+  test "dump_state", %{game: pid} do
+    state = GameServer.dump_state(pid)
+    assert is_map(state)
+  end
+
   test "can start and connect to game, send a chat message, and get it back", %{game: pid} do
+    # uses the test process as the player
     {:ok, player, %Game{} = game_state} = GameServer.join_game(pid, "Player 1")
     assert player == %Player{id: 1, name: "Player 1", team: "X"}
 
@@ -37,6 +45,28 @@ defmodule Tictactoe.GameServerTest do
                  expected_first_message,
                  %ChatMessage{id: 2, source: {:player, 1}, text: "Hello"}
                ]
+
+      other ->
+        flunk("Unexpected message: #{inspect(other)}")
+    end
+  end
+
+  test "player is removed from game if they crash", %{game: game} do
+    {:ok, player} = start_supervised(FakePlayer)
+    refute FakePlayer.joined?(player)
+    {:ok, _player, game_state} = FakePlayer.join_game(player, game, player_name: "Player 1")
+    assert FakePlayer.joined?(player)
+
+    assert length(game_state.players) == 1
+
+    :ok = GameServer.subscribe(game, self())
+
+    # crash the player
+    Process.exit(player, :kill)
+
+    receive do
+      {:game_state, game_state} ->
+        assert length(game_state.players) == 0
 
       other ->
         flunk("Unexpected message: #{inspect(other)}")
