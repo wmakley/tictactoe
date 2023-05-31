@@ -16,10 +16,10 @@ defmodule Tictactoe.GameServer do
 
   ## Public API
 
-  @spec add_player(pid, String.t()) ::
+  @spec join_game(pid, String.t()) ::
           {:error, String.t()} | {:ok, Tictactoe.Player.t(), Game.t()}
-  def add_player(pid, name) when is_pid(pid) and is_binary(name) do
-    GenServer.call(pid, {:add_player, name})
+  def join_game(pid, name) when is_pid(pid) and is_binary(name) do
+    GenServer.call(pid, {:join_game, name})
   end
 
   @spec disconnect(pid, pid, integer) :: :ok
@@ -47,7 +47,7 @@ defmodule Tictactoe.GameServer do
   end
 
   @impl true
-  def handle_call({:add_player, name} = params, {caller, _}, state) when is_pid(caller) do
+  def handle_call({:join_game, name} = params, {caller, _}, state) when is_pid(caller) do
     Logger.debug(fn ->
       "#{inspect(self())} GameServer.handle_call(#{inspect(params)}, from: #{inspect(caller)})"
     end)
