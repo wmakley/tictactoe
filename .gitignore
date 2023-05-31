@@ -4,6 +4,7 @@ node_modules
 build
 .idea
 .vscode
+.elixir_ls
 main
 .env
 .env.*
