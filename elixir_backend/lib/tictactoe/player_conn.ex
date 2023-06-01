@@ -19,7 +19,7 @@ defmodule Tictactoe.PlayerConn do
       end
 
     {:ok, game_pid} = GameRegistry.lookup_or_start_game(GameRegistry, id)
-    {:ok, player, game_state} = GameServer.add_player(game_pid, name)
+    {:ok, player, game_state} = GameServer.join_game(game_pid, name)
 
     # TODO: Game crash should kill connection.
     # TODO: Connection crash should remove the player from game.
@@ -83,13 +83,13 @@ defmodule Tictactoe.PlayerConn do
     {:push, game_state_response(game_state), state}
   end
 
-  def terminate(reason, %{player: player, game: game} = state) do
-    Logger.debug(fn ->
-      "#{inspect(self())} PlayerConn.terminate(#{inspect(reason)}, #{inspect(player)})"
-    end)
+  # def terminate(reason, %{player: player, game: game} = state) do
+  #   Logger.debug(fn ->
+  #     "#{inspect(self())} PlayerConn.terminate(#{inspect(reason)}, #{inspect(player)})"
+  #   end)
 
-    GameServer.disconnect(self(), game, player.id)
+  #   GameServer.disconnect(self(), game, player.id)
 
-    {:ok, state}
-  end
+  #   {:ok, state}
+  # end
 end

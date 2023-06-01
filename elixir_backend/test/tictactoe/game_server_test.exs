@@ -59,17 +59,14 @@ defmodule Tictactoe.GameServerTest do
 
     assert length(game_state.players) == 1
 
-    :ok = GameServer.subscribe(game, self())
-
     # crash the player
     Process.exit(player, :kill)
 
-    receive do
-      {:game_state, game_state} ->
-        assert length(game_state.players) == 0
+    # Cannot guarantee when the server will get the message
+    Process.sleep(100)
 
-      other ->
-        flunk("Unexpected message: #{inspect(other)}")
-    end
+    game_state = GameServer.dump_state(game)
+    assert Enum.empty?(game_state.connections)
+    assert length(game_state.game.players) == 0
   end
 end
