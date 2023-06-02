@@ -5,7 +5,8 @@ defmodule Tictactoe.PlayerConn do
   require Logger
 
   @spec init(Keyword.t()) ::
-          {:push, {:text, String.t()}, %{game: pid, player: Tictactoe.Player.t()}}
+          {:push, {:text, String.t()},
+           %{game: pid, player: Tictactoe.Player.t(), game_ref: reference}}
   def init([name: name, token: token] = options) do
     Logger.debug(fn -> "#{inspect(self())} PlayerConn.init(#{inspect(options)})" end)
 
@@ -20,11 +21,10 @@ defmodule Tictactoe.PlayerConn do
 
     {:ok, game_pid} = GameRegistry.lookup_or_start_game(GameRegistry, id)
     {:ok, player, game_state} = GameServer.join_game(game_pid, name)
+    ref = Process.monitor(game_pid)
 
-    # TODO: Game crash should kill connection.
-    # TODO: Connection crash should remove the player from game.
-
-    {:push, joined_game_response(player, game_state), %{game: game_pid, player: player}}
+    {:push, joined_game_response(player, game_state),
+     %{game: game_pid, player: player, game_ref: ref}}
   end
 
   @spec joined_game_response(Tictactoe.Player.t(), Tictactoe.Game.t()) :: {:text, String.t()}
@@ -53,7 +53,8 @@ defmodule Tictactoe.PlayerConn do
         %{"ChatMsg" => %{"text" => text}} ->
           GameServer.add_chat_message(game, player.id, text)
 
-          # TODO
+        _ ->
+          {:error, "Unknown message"}
       end
 
     case game_state_or_error do
@@ -75,21 +76,23 @@ defmodule Tictactoe.PlayerConn do
     {:text, Jason.encode!(%{"Error" => reason})}
   end
 
-  def handle_info({:game_state, game_state} = params, state) do
+  def handle_info({:game_state, game_state} = message, state) do
     Logger.debug(fn ->
-      "#{inspect(self())} PlayerConn.handle_info(#{inspect(params)})"
+      "#{inspect(self())} PlayerConn.handle_info(#{inspect(message)})"
     end)
 
     {:push, game_state_response(game_state), state}
   end
 
-  # def terminate(reason, %{player: player, game: game} = state) do
-  #   Logger.debug(fn ->
-  #     "#{inspect(self())} PlayerConn.terminate(#{inspect(reason)}, #{inspect(player)})"
-  #   end)
+  def handle_info({:DOWN, ref, :process, _pid, reason} = message, state) do
+    Logger.debug(fn ->
+      "#{inspect(self())} PlayerConn.handle_info(#{inspect(message)})"
+    end)
 
-  #   GameServer.disconnect(self(), game, player.id)
-
-  #   {:ok, state}
-  # end
+    if ref == state.game_ref do
+      {:stop, "game exited: #{inspect(reason)}", state}
+    else
+      {:noreply, state}
+    end
+  end
 end
