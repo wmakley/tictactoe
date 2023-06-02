@@ -22,7 +22,7 @@ defmodule Tictactoe.GameRegistry do
     {:ok, {pids, ids}}
   end
 
-  def random_id() do
+  defp random_id() do
     :crypto.strong_rand_bytes(8) |> Base.encode64()
   end
 
@@ -36,6 +36,16 @@ defmodule Tictactoe.GameRegistry do
 
     # Perform a concurrent lookup first, before performing
     # a synchronized lookup and start.
+
+    id =
+      case String.trim(id) do
+        "" ->
+          random_id()
+
+        trimmed ->
+          trimmed
+      end
+
     case lookup_pid(id) do
       {:ok, pid} ->
         if Process.alive?(pid) do

@@ -2,6 +2,9 @@ defmodule Tictactoe.GameServer do
   @moduledoc """
   A game server process, which manages a single game.
   See: Tictactoe.Game
+
+  Monitors player connections. If the player process is killed,
+  the player is removed from the game.
   """
   use GenServer, restart: :temporary
 
@@ -45,7 +48,7 @@ defmodule Tictactoe.GameServer do
 
   @impl true
   def init(id) do
-    # Logger.debug(fn -> "#{inspect(self())} GameServer.init(#{inspect(id)})" end)
+    Logger.debug(fn -> "#{inspect(self())} GameServer.init(#{inspect(id)})" end)
 
     {:ok,
      %{
@@ -105,7 +108,6 @@ defmodule Tictactoe.GameServer do
     end
   end
 
-  @impl true
   def handle_call({:take_turn, player_id, position} = params, caller, state)
       when is_integer(player_id) and is_integer(position) do
     Logger.debug(fn ->

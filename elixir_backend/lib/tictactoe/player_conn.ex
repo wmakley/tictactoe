@@ -1,25 +1,22 @@
 defmodule Tictactoe.PlayerConn do
+  @moduledoc """
+  A player connection process, which manages a single player's connection to a
+  game via websocket. Implements the WebSock behaviour.
+
+  Monitors the game server process. If the game server process terminates,
+  the player connection also terminates.
+  """
   alias Tictactoe.GameRegistry
   alias Tictactoe.GameServer
 
   require Logger
 
   @spec init(Keyword.t()) ::
-          {:push, {:text, String.t()},
-           %{game: pid, player: Tictactoe.Player.t(), game_ref: reference}}
+          {:push, {:text, String.t()}, %{game: pid, player: Tictactoe.Player.t()}}
   def init([name: name, token: token] = options) do
     Logger.debug(fn -> "#{inspect(self())} PlayerConn.init(#{inspect(options)})" end)
 
-    id =
-      case String.trim(token) do
-        "" ->
-          GameRegistry.random_id()
-
-        _ ->
-          token
-      end
-
-    {:ok, game_pid} = GameRegistry.lookup_or_start_game(GameRegistry, id)
+    {:ok, game_pid} = GameRegistry.lookup_or_start_game(GameRegistry, token)
     {:ok, player, game_state} = GameServer.join_game(game_pid, name)
     Process.monitor(game_pid)
 
