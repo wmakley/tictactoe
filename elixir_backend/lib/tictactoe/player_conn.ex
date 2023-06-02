@@ -21,10 +21,9 @@ defmodule Tictactoe.PlayerConn do
 
     {:ok, game_pid} = GameRegistry.lookup_or_start_game(GameRegistry, id)
     {:ok, player, game_state} = GameServer.join_game(game_pid, name)
-    ref = Process.monitor(game_pid)
+    Process.monitor(game_pid)
 
-    {:push, joined_game_response(player, game_state),
-     %{game: game_pid, player: player, game_ref: ref}}
+    {:push, joined_game_response(player, game_state), %{game: game_pid, player: player}}
   end
 
   @spec joined_game_response(Tictactoe.Player.t(), Tictactoe.Game.t()) :: {:text, String.t()}
@@ -84,12 +83,12 @@ defmodule Tictactoe.PlayerConn do
     {:push, game_state_response(game_state), state}
   end
 
-  def handle_info({:DOWN, ref, :process, _pid, reason} = message, state) do
+  def handle_info({:DOWN, _ref, :process, pid, reason} = message, state) do
     Logger.debug(fn ->
       "#{inspect(self())} PlayerConn.handle_info(#{inspect(message)})"
     end)
 
-    if ref == state.game_ref do
+    if pid == state.game do
       {:stop, "game exited: #{inspect(reason)}", state}
     else
       {:noreply, state}
