@@ -25,15 +25,31 @@ defmodule Tictactoe.GameServer do
     GenServer.call(pid, {:join_game, name})
   end
 
-  @spec leave_game(pid, pid) :: :ok
-  def leave_game(game_server, pid) do
-    GenServer.cast(game_server, {:leave_game, pid})
+  @spec leave_game(pid) :: :ok
+  def leave_game(game_server) do
+    GenServer.cast(game_server, {:leave_game, self()})
   end
 
-  @spec add_chat_message(atom | pid | {atom, any} | {:via, atom, any}, integer, String.t()) ::
+  @spec add_chat_message(pid, String.t()) ::
           {:ok, Game.t()} | {:error, String.t()}
-  def add_chat_message(pid, player_id, text) do
-    GenServer.call(pid, {:add_chat_message, player_id, text})
+  def add_chat_message(pid, text) do
+    GenServer.call(pid, {:add_chat_message, text})
+  end
+
+  @spec update_player_name(pid, String.t()) ::
+          {:ok, Game.t()} | {:error, String.t()}
+  def update_player_name(pid, new_name) do
+    GenServer.call(pid, {:update_player_name, new_name})
+  end
+
+  @spec take_turn(pid, integer) :: {:ok, Game.t()} | {:error, String.t()}
+  def take_turn(pid, space) do
+    GenServer.call(pid, {:take_turn, space})
+  end
+
+  @spec rematch(pid) :: {:ok, Game.t()} | {:error, String.t()}
+  def rematch(pid) do
+    GenServer.call(pid, {:rematch})
   end
 
   @doc """
@@ -68,10 +84,8 @@ defmodule Tictactoe.GameServer do
         broadcast_state_to_players(state)
 
         {:reply, {:ok, player, game},
-         %{
-           state
-           | game: game
-         }
+         state
+         |> update_game_state(game)
          |> add_connection(caller, player.id)}
 
       {:error, reason, game} ->
@@ -79,45 +93,71 @@ defmodule Tictactoe.GameServer do
     end
   end
 
-  def handle_call({:update_player_name, player_id, new_name} = params, caller, state)
-      when is_integer(player_id) and is_binary(new_name) do
+  def handle_call({:update_player_name, new_name} = params, {pid, _} = from, state)
+      when is_binary(new_name) do
     Logger.debug(fn ->
-      "#{inspect(self())} GameServer.handle_call(#{inspect(params)}, #{inspect(caller)})"
+      "#{inspect(self())} GameServer.handle_call(#{inspect(params)}, #{inspect(from)})"
     end)
 
-    case Game.update_player_name(state.game, player_id, new_name) do
-      {:ok, game} ->
-        {:reply, {:ok, game}, %{state | game: game}}
-
+    with {:ok, player_id} <- get_player_id(state, pid),
+         {:ok, game_state} <- Game.update_player_name(state.game, player_id, new_name) do
+      {:reply, {:ok, game_state},
+       state
+       |> update_game_state(game_state)
+       |> broadcast_state_to_players()}
+    else
       {:error, reason} ->
         {:reply, {:error, reason}, state}
     end
   end
 
-  def handle_call({:add_chat_message, player_id, text} = params, caller, state) do
+  def handle_call({:add_chat_message, text} = params, {pid, _} = from, state) do
     Logger.debug(fn ->
-      "#{inspect(self())} GameServer.handle_call(#{inspect(params)}, #{inspect(caller)})"
+      "#{inspect(self())} GameServer.handle_call(#{inspect(params)}, #{inspect(from)})"
     end)
 
-    case Game.add_player_chat_message(state.game, player_id, text) do
-      {:ok, game} ->
-        {:reply, {:ok, game}, %{state | game: game} |> broadcast_state_to_players()}
-
+    with {:ok, player_id} <- get_player_id(state, pid),
+         {:ok, game_state} <- Game.add_player_chat_message(state.game, player_id, text) do
+      {:reply, {:ok, game_state},
+       state
+       |> update_game_state(game_state)
+       |> broadcast_state_to_players()}
+    else
       {:error, reason} ->
         {:reply, {:error, reason}, state}
     end
   end
 
-  def handle_call({:take_turn, player_id, position} = params, caller, state)
-      when is_integer(player_id) and is_integer(position) do
+  def handle_call({:take_turn, position} = params, {pid, _} = from, state)
+      when is_integer(position) do
     Logger.debug(fn ->
-      "#{inspect(self())} GameServer.handle_call(#{inspect(params)}, #{inspect(caller)})"
+      "#{inspect(self())} GameServer.handle_call(#{inspect(params)}, #{inspect(from)})"
     end)
 
-    case Game.take_turn(state.game, player_id, position) do
-      {:ok, game} ->
-        {:reply, {:ok, game}, %{state | game: game} |> broadcast_state_to_players()}
+    with {:ok, player_id} <- get_player_id(state, pid),
+         {:ok, game_state} <- Game.take_turn(state.game, player_id, position) do
+      {:reply, {:ok, game_state},
+       state
+       |> update_game_state(game_state)
+       |> broadcast_state_to_players()}
+    else
+      {:error, reason} ->
+        {:reply, {:error, reason}, state}
+    end
+  end
 
+  def handle_call({:rematch} = msg, {pid, _} = from, state) do
+    Logger.debug(fn ->
+      "#{inspect(self())} GameServer.handle_call(#{inspect(msg)}, #{inspect(from)})"
+    end)
+
+    with {:ok, player_id} <- get_player_id(state, pid),
+         {:ok, game_state} <- Game.rematch(state.game, player_id) do
+      {:reply, {:ok, game_state},
+       state
+       |> update_game_state(game_state)
+       |> broadcast_state_to_players()}
+    else
       {:error, reason} ->
         {:reply, {:error, reason}, state}
     end
@@ -147,6 +187,11 @@ defmodule Tictactoe.GameServer do
     {:noreply, remove_player(state, pid)}
   end
 
+  @spec update_game_state(map, Game.t()) :: map
+  defp update_game_state(state, game_state) do
+    %{state | game: game_state}
+  end
+
   defp remove_player(state, pid) when is_pid(pid) do
     Logger.debug(fn ->
       "#{inspect(self())} GameServer.remove_player(#{inspect(pid)})"
@@ -156,19 +201,32 @@ defmodule Tictactoe.GameServer do
 
     {:ok, game} = Game.remove_player(state.game, player_id)
 
-    %{state | game: game} |> broadcast_state_to_players()
+    state
+    |> update_game_state(game)
+    |> broadcast_state_to_players()
   end
 
   defp add_connection(state, pid, player_id) when is_pid(pid) and is_integer(player_id) do
     ref = Process.monitor(pid)
-    %{state | connections: Map.put(state.connections, pid, {ref, player_id})}
+    %{state | connections: Map.put(state.connections, pid, {:ref, ref, :player_id, player_id})}
+  end
+
+  @spec get_player_id(map, pid) :: {:ok, integer} | {:error, String.t()}
+  defp get_player_id(state, player_pid) when is_pid(player_pid) do
+    case Map.get(state.connections, player_pid) do
+      {:ref, _ref, :player_id, player_id} ->
+        {:ok, player_id}
+
+      nil ->
+        {:error, "Player not found"}
+    end
   end
 
   @spec remove_connection(any(), pid) :: {:ok, integer, any()}
   defp remove_connection(state, pid) when is_pid(pid) do
     Logger.debug("#{inspect(self())} GameServer.remove_connection(#{inspect(pid)})")
 
-    {ref, player_id} = Map.get(state.connections, pid)
+    {:ref, ref, :player_id, player_id} = Map.get(state.connections, pid)
 
     Process.demonitor(ref)
 
@@ -180,14 +238,14 @@ defmodule Tictactoe.GameServer do
   end
 
   defp broadcast_state_to_players(state) do
-    connections = Map.keys(state.connections)
+    pids = Map.keys(state.connections)
 
     Logger.debug(fn ->
-      "#{inspect(self())} GameServer.broadcast_state_to_players(#{inspect(connections)})"
+      "#{inspect(self())} GameServer.broadcast_state_to_players(#{inspect(pids)})"
     end)
 
-    Enum.each(connections, fn connection ->
-      :ok = Process.send(connection, {:game_state, state.game}, [])
+    Enum.each(pids, fn pid ->
+      :ok = Process.send(pid, {:game_state, state.game}, [])
     end)
 
     state

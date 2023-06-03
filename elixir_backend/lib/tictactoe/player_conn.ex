@@ -36,7 +36,7 @@ defmodule Tictactoe.PlayerConn do
     {:text, Jason.encode!(json)}
   end
 
-  def handle_in({msg, [opcode: :text]}, %{game: game, player: player} = state) do
+  def handle_in({msg, [opcode: :text]}, %{game: game} = state) do
     Logger.debug(fn ->
       "#{inspect(self())} PlayerConn.handle_in(#{inspect(msg)}, #{inspect(state)})"
     end)
@@ -47,15 +47,25 @@ defmodule Tictactoe.PlayerConn do
     game_state_or_error =
       case json do
         %{"ChatMsg" => %{"text" => text}} ->
-          GameServer.add_chat_message(game, player.id, text)
+          GameServer.add_chat_message(game, text)
 
-        _ ->
-          {:error, "Unknown message"}
+        %{"ChangeName" => %{"new_name" => new_name}} ->
+          GameServer.update_player_name(game, new_name)
+
+        %{"Move" => %{"space" => space}} ->
+          GameServer.take_turn(game, space)
+
+        "Rematch" ->
+          GameServer.rematch(game)
+
+        other ->
+          {:error, "Unknown message: #{inspect(other)}}"}
       end
 
     case game_state_or_error do
-      {:ok, game_state} ->
-        {:reply, :ok, game_state_response(game_state), state}
+      {:ok, _game_state} ->
+        # Game will broadcast the new game state to all players.
+        {:ok, state}
 
       {:error, reason} ->
         {:reply, :ok, error_response(reason), state}

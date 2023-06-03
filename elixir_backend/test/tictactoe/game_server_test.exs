@@ -37,7 +37,7 @@ defmodule Tictactoe.GameServerTest do
              expected_first_message
            ]
 
-    GameServer.add_chat_message(pid, player.id, "Hello")
+    GameServer.add_chat_message(pid, "Hello")
 
     receive do
       {:game_state, game_state} ->

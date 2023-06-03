@@ -99,6 +99,8 @@ defmodule Tictactoe.Game do
     end
   end
 
+  @spec remove_player(game :: %__MODULE__{}, id :: integer) ::
+          {:ok, %__MODULE__{}} | {:error, String.t()}
   def remove_player(%__MODULE__{} = game, id) when is_integer(id) do
     case find_player(game, id) do
       {:error, reason} ->
@@ -162,29 +164,51 @@ defmodule Tictactoe.Game do
 
   @spec take_turn(%__MODULE__{}, integer, integer) ::
           {:ok, %__MODULE__{}} | {:error, String.t()}
-  def take_turn(%__MODULE__{players: players} = game, id, space)
-      when is_integer(id) and is_integer(space) do
-    case length(players) do
-      2 ->
-        case find_player(game, id) do
-          {:error, reason} ->
-            {:error, reason}
+  def take_turn(game, player_id, space)
+      when is_integer(player_id) and is_integer(space) do
+    with true <- game_full?(game),
+         {:ok, player} <- find_player(game, player_id),
+         true <- my_turn?(game, player),
+         true <- valid_move?(game, space) do
+      {:ok, take_turn_happy_path(game, player, space)}
+    else
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
 
-          {:ok, player} ->
-            cond do
-              game.winner != nil ->
-                {:error, "Game is over"}
+  defp game_full?(%__MODULE__{players: players}) do
+    if length(players) == 2 do
+      true
+    else
+      {:error, "Not enough players"}
+    end
+  end
 
-              game.turn != player.team ->
-                {:error, "Not your turn"}
+  defp my_turn?(game, player) do
+    cond do
+      game.winner != nil ->
+        {:error, "Game is over"}
 
-              true ->
-                {:ok, take_turn_happy_path(game, player, space)}
-            end
-        end
+      game.turn != player.team ->
+        {:error, "Not your turn"}
 
-      _ ->
-        {:error, "Not enough players"}
+      true ->
+        true
+    end
+  end
+
+  defp valid_move?(game, move) when is_integer(move) do
+    if move >= 0 and move < 9 do
+      case Enum.at(game.board, move) do
+        " " ->
+          true
+
+        _ ->
+          {:error, "Space is already taken"}
+      end
+    else
+      {:error, "Invalid space"}
     end
   end
 
@@ -253,11 +277,13 @@ defmodule Tictactoe.Game do
     Enum.all?(game.board, fn space -> space != " " end)
   end
 
+  @spec rematch(%__MODULE__{}, integer) :: {:ok, %__MODULE__{}} | {:error, String.t()}
   def rematch(%__MODULE__{} = game, player_id) do
-    game
-    |> reset
-    |> swap_teams
-    |> add_chat_message({:player, player_id}, "Rematch!")
+    {:ok,
+     game
+     |> reset
+     |> swap_teams
+     |> add_chat_message({:player, player_id}, "Rematch!")}
   end
 
   defp reset(game) do
