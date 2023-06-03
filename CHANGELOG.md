@@ -1,5 +1,9 @@
 # Changelog for all projects
 
+## 2023-06-03
+### Svelte Frontend
+* Do not clear the entire URL after disconnect from server.
+
 ## 2023-05-13
 ### Stress Tester
 * Fix TLS connection not working.
