@@ -3,6 +3,8 @@
 ## 2023-06-03
 ### Svelte Frontend
 * Do not clear the entire URL after disconnect from server.
+* Hardcode protocol (wss vs ws) as part of the backend URL, do not infer it.
+  (Fixes using localhost from the public frontend site.)
 
 ## 2023-05-13
 ### Stress Tester

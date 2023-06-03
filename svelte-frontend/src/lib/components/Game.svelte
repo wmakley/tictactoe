@@ -32,8 +32,7 @@
         if (!url) {
             return "";
         }
-        const socketProtocol = url.protocol === "https:" ? "wss://" : "ws://";
-        return `${socketProtocol}${backendUrl}/ws`;
+        return `${backendUrl}/ws`;
     }
 
     afterUpdate(() => {
