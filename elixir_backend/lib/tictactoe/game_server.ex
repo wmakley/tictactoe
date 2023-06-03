@@ -81,11 +81,10 @@ defmodule Tictactoe.GameServer do
 
     case Game.add_player(state.game, name) do
       {:ok, player, game} ->
-        broadcast_state_to_players(state)
-
         {:reply, {:ok, player, game},
          state
          |> update_game_state(game)
+         |> broadcast_state_to_players()
          |> add_connection(caller, player.id)}
 
       {:error, reason, game} ->
