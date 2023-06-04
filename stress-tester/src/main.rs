@@ -390,7 +390,7 @@ async fn spawn_client(
                 Ok(Err(conn_err)) => {
                     Err(conn_err)
                 }
-                Err(recv_err) => {
+                Err(_recv_err) => {
                     // we end up here if the other end of the channel got dropped
                     Err(format!("{} conn {}: connection failed", game_id, client_id).into())
                 }
