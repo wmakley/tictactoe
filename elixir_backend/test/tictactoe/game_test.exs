@@ -146,4 +146,34 @@ defmodule Tictactoe.GameTest do
              %ChatMessage{id: 4, source: {:player, p2.id}, text: "valid message 2"}
            ]
   end
+
+  test "rematch" do
+    game = Game.new("rematch-test")
+    {:ok, p1, game} = Game.add_player(game, "Player 1")
+    assert p1.team == "X"
+    {:ok, p2, game} = Game.add_player(game, "Player 2")
+    assert p2.team == "O"
+
+    {:ok, game} = Game.take_turn(game, p1.id, 0)
+    {:ok, game} = Game.take_turn(game, p2.id, 1)
+    {:ok, game} = Game.take_turn(game, p1.id, 2)
+    {:ok, game} = Game.take_turn(game, p2.id, 3)
+    {:ok, game} = Game.take_turn(game, p1.id, 4)
+
+    {:ok, game} = Game.rematch(game, p1.id)
+    p1 = Enum.find(game.players, fn p -> p.id == p1.id end)
+    p2 = Enum.find(game.players, fn p -> p.id == p2.id end)
+    assert p1.team == "O"
+    assert p2.team == "X"
+
+    assert game.board == [" ", " ", " ", " ", " ", " ", " ", " ", " "]
+    assert game.turn == "X"
+    assert game.winner == nil
+
+    assert List.last(game.chat) == %ChatMessage{
+             id: 8,
+             source: {:player, p1.id},
+             text: "Rematch!"
+           }
+  end
 end
