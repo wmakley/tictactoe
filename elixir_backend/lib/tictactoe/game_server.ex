@@ -202,7 +202,7 @@ defmodule Tictactoe.GameServer do
   @impl true
   def terminate(reason, state) do
     Logger.debug(fn ->
-      "#{inspect(self())} GameServer.terminate(#{inspect(reason)}, #{inspect(state.connections)})"
+      "#{inspect(self())} GameServer.terminate(#{inspect(reason)}, id: #{inspect(state.id)})"
     end)
   end
 
