@@ -1,20 +1,17 @@
 defmodule Tictactoe.Game do
-  defstruct [
-    :id,
-    players: [],
-    board: [" ", " ", " ", " ", " ", " ", " ", " ", " "],
-    turn: "X",
-    winner: nil,
-    chat: [],
-    next_chat_id: 1
-  ]
+  defstruct players: [],
+            board: [" ", " ", " ", " ", " ", " ", " ", " ", " "],
+            turn: "X",
+            winner: nil,
+            chat: [],
+            next_chat_id: 1
 
   alias Tictactoe.Player
   alias Tictactoe.ChatMessage
 
-  @spec new(String.t()) :: %__MODULE__{}
-  def new(id) do
-    %__MODULE__{id: id}
+  @spec new() :: %__MODULE__{}
+  def new() do
+    %__MODULE__{}
   end
 
   def add_player(%__MODULE__{players: players} = game, name) do

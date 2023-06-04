@@ -68,8 +68,9 @@ defmodule Tictactoe.GameServer do
 
     {:ok,
      %{
+       id: id,
        connections: %{},
-       game: Game.new(id)
+       game: Game.new()
      }}
   end
 

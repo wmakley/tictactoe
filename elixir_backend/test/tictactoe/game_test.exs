@@ -5,20 +5,15 @@ defmodule Tictactoe.GameTest do
   alias Tictactoe.Player
   alias Tictactoe.ChatMessage
 
-  test "new game" do
-    game = Game.new("test")
-    assert game.id == "test"
-  end
-
   test "json encoding" do
-    game = Game.new("test")
+    game = Game.new()
 
     assert Jason.encode!(game) ==
              ~S({"board":[" "," "," "," "," "," "," "," "," "],"chat":[],"players":[],"turn":"X","winner":null})
   end
 
   test "add player" do
-    game = Game.new("test")
+    game = Game.new()
     {:ok, player, game} = Game.add_player(game, "Player 1")
     assert player == %Player{id: 1, name: "Player 1", team: "X", wins: 0}
     assert game.players == [%Player{id: 1, name: "Player 1", team: "X", wins: 0}]
@@ -44,7 +39,7 @@ defmodule Tictactoe.GameTest do
   end
 
   test "update_player_name" do
-    game = Game.new("update-test")
+    game = Game.new()
 
     {:ok, player, game} = Game.add_player(game, "Player 1")
     {:ok, game} = Game.update_player_name(game, player.id, "Player 1 Updated")
@@ -59,7 +54,7 @@ defmodule Tictactoe.GameTest do
   end
 
   test "update player name when player id is invalid" do
-    game = Game.new("update-test")
+    game = Game.new()
 
     {:error, msg} = Game.update_player_name(game, 1, "Player 1 Updated")
 
@@ -67,7 +62,7 @@ defmodule Tictactoe.GameTest do
   end
 
   test "remove_player" do
-    game = Game.new("browser-msg-test")
+    game = Game.new()
 
     {:ok, player, game} = Game.add_player(game, "Player 1")
     {:ok, game} = Game.remove_player(game, player.id)
@@ -79,7 +74,7 @@ defmodule Tictactoe.GameTest do
   end
 
   test "take_turn" do
-    game = Game.new("take-turn-test")
+    game = Game.new()
 
     {:ok, p1, game} = Game.add_player(game, "Player 1")
     {:error, msg} = Game.take_turn(game, p1.id, 0)
@@ -104,7 +99,7 @@ defmodule Tictactoe.GameTest do
   end
 
   test "add chat message" do
-    game = Game.new("chat-test")
+    game = Game.new()
 
     {:ok, p1, game} = Game.add_player(game, "Player 1")
     {:ok, p2, game} = Game.add_player(game, "Player 2")
@@ -148,7 +143,7 @@ defmodule Tictactoe.GameTest do
   end
 
   test "rematch" do
-    game = Game.new("rematch-test")
+    game = Game.new()
     {:ok, p1, game} = Game.add_player(game, "Player 1")
     assert p1.team == "X"
     {:ok, p2, game} = Game.add_player(game, "Player 2")
