@@ -14,7 +14,7 @@ defmodule Tictactoe.PlayerConn do
   @spec init(Keyword.t()) ::
           {:push, {:text, String.t()}, %{game: pid, player: Tictactoe.Player.t()}}
   def init([name: name, token: token] = options) do
-    Logger.debug(fn -> "#{inspect(self())} PlayerConn.init(#{inspect(options)})" end)
+    Logger.info("#{inspect(self())} PlayerConn.init(#{inspect(options)})")
 
     {:ok, game_pid} = GameRegistry.lookup_or_start_game(token)
     {:ok, player, game_state} = GameServer.join_game(game_pid, name)
@@ -24,9 +24,7 @@ defmodule Tictactoe.PlayerConn do
   end
 
   def handle_in({msg, [opcode: :text]}, %{game: game} = state) do
-    Logger.debug(fn ->
-      "#{inspect(self())} PlayerConn.handle_in(#{inspect(msg)})"
-    end)
+    Logger.debug("#{inspect(self())} PlayerConn.handle_in(#{inspect(msg)})")
 
     json = Jason.decode!(msg)
     # Logger.debug(fn -> "#{inspect(self())} Decoded JSON: #{inspect(json)}" end)
@@ -67,12 +65,11 @@ defmodule Tictactoe.PlayerConn do
     {:push, game_state_response(game_state), state}
   end
 
-  def handle_info({:DOWN, _ref, :process, pid, reason} = message, state) do
-    Logger.debug(fn ->
-      "#{inspect(self())} PlayerConn.handle_info(#{inspect(message)})"
-    end)
+  def handle_info({:DOWN, _ref, :process, pid, reason}, state) do
+    # Logger.debug("#{inspect(self())} PlayerConn.handle_info(#{inspect(message)})")
 
     if pid == state.game do
+      Logger.warn("#{inspect(self())} Game server process terminated: #{inspect(reason)}")
       {:stop, "game exited: #{inspect(reason)}", state}
     else
       {:noreply, state}

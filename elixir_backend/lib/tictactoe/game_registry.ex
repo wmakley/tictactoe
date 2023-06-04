@@ -139,9 +139,7 @@ defmodule Tictactoe.GameRegistry do
         :ets.delete(:game_pids, id)
 
       nil ->
-        Logger.warn(fn ->
-          "GameRegistry.unregister_game: #{inspect(pid)}: not found"
-        end)
+        Logger.warn("GameRegistry.unregister_game: #{inspect(pid)}: not found")
 
         nil
     end

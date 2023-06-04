@@ -64,7 +64,7 @@ defmodule Tictactoe.GameServer do
 
   @impl true
   def init(id) do
-    Logger.debug(fn -> "#{inspect(self())} GameServer.init(#{inspect(id)})" end)
+    Logger.info("#{inspect(self())} GameServer.init(#{inspect(id)})")
 
     {:ok,
      %{
@@ -76,9 +76,9 @@ defmodule Tictactoe.GameServer do
 
   @impl true
   def handle_call({:join_game, name} = params, {caller, _}, state) when is_pid(caller) do
-    Logger.debug(fn ->
+    Logger.debug(
       "#{inspect(self())} GameServer.handle_call(#{inspect(params)}, from: #{inspect(caller)})"
-    end)
+    )
 
     case Game.add_player(state.game, name) do
       {:ok, player, game} ->
@@ -95,9 +95,9 @@ defmodule Tictactoe.GameServer do
 
   def handle_call({:update_player_name, new_name} = params, {pid, _} = from, state)
       when is_binary(new_name) do
-    Logger.debug(fn ->
+    Logger.debug(
       "#{inspect(self())} GameServer.handle_call(#{inspect(params)}, #{inspect(from)})"
-    end)
+    )
 
     with {:ok, player_id} <- get_player_id(state, pid),
          {:ok, game_state} <- Game.update_player_name(state.game, player_id, new_name) do
@@ -111,10 +111,10 @@ defmodule Tictactoe.GameServer do
     end
   end
 
-  def handle_call({:add_chat_message, text} = params, {pid, _} = from, state) do
-    Logger.debug(fn ->
-      "#{inspect(self())} GameServer.handle_call(#{inspect(params)}, #{inspect(from)})"
-    end)
+  def handle_call({:add_chat_message, text} = msg, {pid, _}, state) do
+    Logger.debug(
+      "#{inspect(self())} GameServer.handle_call(#{inspect(msg)}, player: #{inspect(pid)})"
+    )
 
     with {:ok, player_id} <- get_player_id(state, pid),
          {:ok, game_state} <- Game.add_player_chat_message(state.game, player_id, text) do
@@ -130,9 +130,9 @@ defmodule Tictactoe.GameServer do
 
   def handle_call({:take_turn, position} = params, {pid, _} = from, state)
       when is_integer(position) do
-    Logger.debug(fn ->
+    Logger.debug(
       "#{inspect(self())} GameServer.handle_call(#{inspect(params)}, #{inspect(from)})"
-    end)
+    )
 
     with {:ok, player_id} <- get_player_id(state, pid),
          {:ok, game_state} <- Game.take_turn(state.game, player_id, position) do
@@ -147,9 +147,7 @@ defmodule Tictactoe.GameServer do
   end
 
   def handle_call({:rematch} = msg, {pid, _} = from, state) do
-    Logger.debug(fn ->
-      "#{inspect(self())} GameServer.handle_call(#{inspect(msg)}, #{inspect(from)})"
-    end)
+    Logger.debug("#{inspect(self())} GameServer.handle_call(#{inspect(msg)}, #{inspect(from)})")
 
     with {:ok, player_id} <- get_player_id(state, pid),
          {:ok, game_state} <- Game.rematch(state.game, player_id) do
@@ -165,33 +163,28 @@ defmodule Tictactoe.GameServer do
 
   # Dump the state of the server, for debugging
   def handle_call(:dump_state, _from, state) do
-    Logger.debug(fn -> "#{inspect(self())} GameServer.dump_state()" end)
+    Logger.debug("#{inspect(self())} GameServer.dump_state()")
     {:reply, state, state}
   end
 
   @impl true
   def handle_cast({:disconnect, pid} = params, state) do
-    Logger.debug(fn ->
-      "#{inspect(self())} GameServer.handle_cast(#{inspect(params)})"
-    end)
+    Logger.debug("#{inspect(self())} GameServer.handle_cast(#{inspect(params)})")
 
     {:noreply, remove_player(state, pid)}
   end
 
   @impl true
-  def handle_info({:DOWN, _ref, :process, pid, _reason} = params, state) when is_pid(pid) do
-    Logger.debug(fn ->
-      "#{inspect(self())} GameServer.handle_info(#{inspect(params)})"
-    end)
+  def handle_info({:DOWN, _ref, :process, pid, _reason}, state) when is_pid(pid) do
+    # Logger.debug("#{inspect(self())} GameServer.handle_info(#{inspect(params)})")
+    Logger.info("#{inspect(self())} GameServer: Player #{inspect(pid)} disconnected.")
 
     {:noreply, remove_player(state, pid)}
   end
 
   def handle_info(:terminate_if_empty, state) do
     if map_size(state.connections) == 0 do
-      Logger.debug(fn ->
-        "#{inspect(self())} GameServer.handle_info(:terminate_if_empty) terminating"
-      end)
+      Logger.debug("#{inspect(self())} GameServer.handle_info(:terminate_if_empty) terminating")
 
       {:stop, :normal, state}
     else
@@ -201,9 +194,9 @@ defmodule Tictactoe.GameServer do
 
   @impl true
   def terminate(reason, state) do
-    Logger.debug(fn ->
+    Logger.info(
       "#{inspect(self())} GameServer.terminate(#{inspect(reason)}, id: #{inspect(state.id)})"
-    end)
+    )
   end
 
   @spec update_game_state(map, Game.t()) :: map
@@ -212,9 +205,7 @@ defmodule Tictactoe.GameServer do
   end
 
   defp remove_player(state, pid) when is_pid(pid) do
-    Logger.debug(fn ->
-      "#{inspect(self())} GameServer.remove_player(#{inspect(pid)})"
-    end)
+    Logger.debug("#{inspect(self())} GameServer.remove_player(#{inspect(pid)})")
 
     {:ok, player_id, state} = remove_connection(state, pid)
 
@@ -272,9 +263,7 @@ defmodule Tictactoe.GameServer do
   defp broadcast_state_to_players(state) do
     pids = Map.keys(state.connections)
 
-    Logger.debug(fn ->
-      "#{inspect(self())} GameServer.broadcast_state_to_players(#{inspect(pids)})"
-    end)
+    Logger.debug("#{inspect(self())} GameServer.broadcast_state_to_players(#{inspect(pids)})")
 
     Enum.each(pids, fn pid ->
       :ok = Process.send(pid, {:game_state, state.game}, [])
