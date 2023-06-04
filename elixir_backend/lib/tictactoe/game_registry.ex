@@ -23,7 +23,7 @@ defmodule Tictactoe.GameRegistry do
   end
 
   defp random_id() do
-    :crypto.strong_rand_bytes(8) |> Base.encode64()
+    :rand.uniform(1_000_000) |> Integer.to_string()
   end
 
   @doc """

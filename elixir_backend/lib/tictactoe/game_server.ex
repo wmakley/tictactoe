@@ -187,11 +187,11 @@ defmodule Tictactoe.GameServer do
   end
 
   def handle_info(:terminate_if_empty, state) do
-    Logger.debug(fn ->
-      "#{inspect(self())} GameServer.handle_info(:terminate_if_empty)"
-    end)
-
     if map_size(state.connections) == 0 do
+      Logger.debug(fn ->
+        "#{inspect(self())} GameServer.handle_info(:terminate_if_empty) terminating"
+      end)
+
       {:stop, :normal, state}
     else
       {:noreply, state}

@@ -82,10 +82,10 @@ defmodule Tictactoe.PlayerConn do
     {:text, Jason.encode!(%{"Error" => reason})}
   end
 
-  def handle_info({:game_state, game_state} = message, state) do
-    Logger.debug(fn ->
-      "#{inspect(self())} PlayerConn.handle_info(#{inspect(message)})"
-    end)
+  def handle_info({:game_state, game_state}, state) do
+    # Logger.debug(fn ->
+    #   "#{inspect(self())} PlayerConn.handle_info(#{inspect(message)})"
+    # end)
 
     {:push, game_state_response(game_state), state}
   end
