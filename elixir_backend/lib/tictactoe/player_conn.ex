@@ -16,7 +16,7 @@ defmodule Tictactoe.PlayerConn do
   def init([name: name, token: token] = options) do
     Logger.debug(fn -> "#{inspect(self())} PlayerConn.init(#{inspect(options)})" end)
 
-    {:ok, game_pid} = GameRegistry.lookup_or_start_game(GameRegistry, token)
+    {:ok, game_pid} = GameRegistry.lookup_or_start_game(token)
     {:ok, player, game_state} = GameServer.join_game(game_pid, name)
     Process.monitor(game_pid)
 

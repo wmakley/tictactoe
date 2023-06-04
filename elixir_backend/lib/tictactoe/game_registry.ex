@@ -27,6 +27,14 @@ defmodule Tictactoe.GameRegistry do
   end
 
   @doc """
+  Lookup a game from the default global registry.
+  """
+  @spec lookup_or_start_game(String.t()) :: {:ok, pid}
+  def lookup_or_start_game(id) do
+    lookup_or_start_game(__MODULE__, id)
+  end
+
+  @doc """
   Lookup a game pid by its id/join token. If the game is not found, start a new
   one. Returns the pid of the game.
   """
