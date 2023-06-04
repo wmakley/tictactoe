@@ -186,6 +186,25 @@ defmodule Tictactoe.GameServer do
     {:noreply, remove_player(state, pid)}
   end
 
+  def handle_info(:terminate_if_empty, state) do
+    Logger.debug(fn ->
+      "#{inspect(self())} GameServer.handle_info(:terminate_if_empty)"
+    end)
+
+    if map_size(state.connections) == 0 do
+      {:stop, :normal, state}
+    else
+      {:noreply, state}
+    end
+  end
+
+  @impl true
+  def terminate(reason, state) do
+    Logger.debug(fn ->
+      "#{inspect(self())} GameServer.terminate(#{inspect(reason)}, #{inspect(state.connections)})"
+    end)
+  end
+
   @spec update_game_state(map, Game.t()) :: map
   defp update_game_state(state, game_state) do
     %{state | game: game_state}
@@ -203,6 +222,19 @@ defmodule Tictactoe.GameServer do
     state
     |> update_game_state(game)
     |> broadcast_state_to_players()
+    |> schedule_termination_if_empty()
+  end
+
+  defp schedule_termination_if_empty(state) do
+    # Logger.debug(fn ->
+    #   "#{inspect(self())} GameServer.schedule_termination_if_empty()"
+    # end)
+
+    if map_size(state.connections) == 0 do
+      Process.send_after(self(), :terminate_if_empty, 60_000)
+    end
+
+    state
   end
 
   defp add_connection(state, pid, player_id) when is_pid(pid) and is_integer(player_id) do
