@@ -1,0 +1,21 @@
+# fly.toml app configuration file generated for tictactoe-elixir-backend on 2023-06-04T09:02:13-04:00
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = "tictactoe-elixir-backend"
+primary_region = "bos"
+
+[build]
+  builder = "heroku/buildpacks:20"
+  buildpacks = ["https://cnb-shim.herokuapp.com/v1/hashnuke/elixir"]
+
+[env]
+  PORT = "8080"
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 0
