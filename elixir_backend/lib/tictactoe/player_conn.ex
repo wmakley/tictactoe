@@ -23,26 +23,13 @@ defmodule Tictactoe.PlayerConn do
     {:push, joined_game_response(player, game_state), %{game: game_pid, player: player}}
   end
 
-  @spec joined_game_response(Tictactoe.Player.t(), Tictactoe.Game.t()) :: {:text, String.t()}
-  defp joined_game_response(player, game_state) do
-    json = %{
-      "JoinedGame" => %{
-        "token" => game_state.id,
-        "player_id" => player.id,
-        "state" => game_state
-      }
-    }
-
-    {:text, Jason.encode!(json)}
-  end
-
   def handle_in({msg, [opcode: :text]}, %{game: game} = state) do
     Logger.debug(fn ->
-      "#{inspect(self())} PlayerConn.handle_in(#{inspect(msg)}, #{inspect(state)})"
+      "#{inspect(self())} PlayerConn.handle_in(#{inspect(msg)})"
     end)
 
     json = Jason.decode!(msg)
-    Logger.debug(fn -> "#{inspect(self())} Decoded JSON: #{inspect(json)}" end)
+    # Logger.debug(fn -> "#{inspect(self())} Decoded JSON: #{inspect(json)}" end)
 
     game_state_or_error =
       case json do
@@ -72,16 +59,6 @@ defmodule Tictactoe.PlayerConn do
     end
   end
 
-  @spec game_state_response(Tictactoe.Game.t()) :: {:text, String.t()}
-  defp game_state_response(game) do
-    {:text, Jason.encode!(%{"GameState" => game})}
-  end
-
-  @spec error_response(String.t()) :: {:text, String.t()}
-  defp error_response(reason) do
-    {:text, Jason.encode!(%{"Error" => reason})}
-  end
-
   def handle_info({:game_state, game_state}, state) do
     # Logger.debug(fn ->
     #   "#{inspect(self())} PlayerConn.handle_info(#{inspect(message)})"
@@ -100,5 +77,28 @@ defmodule Tictactoe.PlayerConn do
     else
       {:noreply, state}
     end
+  end
+
+  @spec joined_game_response(Tictactoe.Player.t(), Tictactoe.Game.t()) :: {:text, String.t()}
+  defp joined_game_response(player, game_state) do
+    json = %{
+      "JoinedGame" => %{
+        "token" => game_state.id,
+        "player_id" => player.id,
+        "state" => game_state
+      }
+    }
+
+    {:text, Jason.encode!(json)}
+  end
+
+  @spec game_state_response(Tictactoe.Game.t()) :: {:text, String.t()}
+  defp game_state_response(game) do
+    {:text, Jason.encode!(%{"GameState" => game})}
+  end
+
+  @spec error_response(String.t()) :: {:text, String.t()}
+  defp error_response(reason) do
+    {:text, Jason.encode!(%{"Error" => reason})}
   end
 end
