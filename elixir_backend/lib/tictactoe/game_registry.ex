@@ -22,10 +22,6 @@ defmodule Tictactoe.GameRegistry do
     {:ok, {pids, ids}}
   end
 
-  defp random_id() do
-    :rand.uniform(1_000_000) |> Integer.to_string()
-  end
-
   @doc """
   Lookup a game from the default global registry.
   """
@@ -123,6 +119,18 @@ defmodule Tictactoe.GameRegistry do
     # end)
 
     {:noreply, state}
+  end
+
+  @spec random_id() :: String.t()
+  defp random_id() do
+    for _ <- 1..7,
+        into: "",
+        do: random_char()
+  end
+
+  @spec random_char() :: String.t()
+  defp random_char() do
+    <<Enum.random('0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ')>>
   end
 
   defp unregister_game(pid) when is_pid(pid) do
