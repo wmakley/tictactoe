@@ -12,6 +12,14 @@ defmodule Tictactoe.Router do
   plug(Plug.Parsers, parsers: [:urlencoded, :multipart], validate_utf8: true)
   plug(:dispatch)
 
+  get "/health" do
+    send_resp(conn, 200, "OK\n")
+  end
+
+  get "/robots.txt" do
+    send_resp(conn, 200, "User-agent: *\nDisallow: /\n")
+  end
+
   get "/ws" do
     # Logger.debug(fn -> inspect(conn) end)
 
