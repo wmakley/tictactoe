@@ -6,13 +6,19 @@ port =
 
 config :tictactoe, :port, port
 
-case Mix.env() do
-  :dev ->
-    Logger.configure(level: :debug)
+log_level = System.get_env("LOG_LEVEL", nil)
 
-  :test ->
-    Logger.configure(level: :debug)
+if log_level do
+  Logger.configure(level: String.to_atom(log_level))
+else
+  case Mix.env() do
+    :dev ->
+      Logger.configure(level: :debug)
 
-  :prod ->
-    Logger.configure(level: :info)
+    :test ->
+      Logger.configure(level: :debug)
+
+    :prod ->
+      Logger.configure(level: :info)
+  end
 end
