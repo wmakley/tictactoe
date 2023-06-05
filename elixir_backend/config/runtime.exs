@@ -13,12 +13,12 @@ if log_level do
 else
   case Mix.env() do
     :dev ->
-      Logger.configure(level: :debug)
+      Logger.configure(level: :info)
 
     :test ->
-      Logger.configure(level: :debug)
+      Logger.configure(level: :warning)
 
     :prod ->
-      Logger.configure(level: :info)
+      Logger.configure(level: :warning)
   end
 end
