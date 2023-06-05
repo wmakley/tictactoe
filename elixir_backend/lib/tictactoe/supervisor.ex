@@ -7,9 +7,11 @@ defmodule Tictactoe.Supervisor do
 
   @impl true
   def init(_init_arg) do
+    port = Application.fetch_env!(:tictactoe, :port)
+
     children = [
       {Tictactoe.GameRegistry, name: Tictactoe.GameRegistry},
-      {Bandit, plug: Tictactoe.Router, scheme: :http, port: 3000}
+      {Bandit, plug: Tictactoe.Router, scheme: :http, port: port}
     ]
 
     Supervisor.init(children, strategy: :one_for_one)
