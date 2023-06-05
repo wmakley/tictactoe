@@ -29,16 +29,16 @@ defmodule Tictactoe.GameRegistry do
   @doc """
   Lookup a game from the default global registry.
   """
-  @spec lookup_or_start_game(String.t()) :: {:ok, pid}
+  @spec lookup_or_start_game(String.t()) :: {:ok, String.t(), pid}
   def lookup_or_start_game(id) do
     lookup_or_start_game(__MODULE__, id)
   end
 
   @doc """
   Lookup a game pid by its id/join token. If the game is not found, start a new
-  one. Returns the pid of the game.
+  one. Returns the id and pid of the game.
   """
-  @spec lookup_or_start_game(pid | atom, String.t()) :: {:ok, pid}
+  @spec lookup_or_start_game(pid | atom, String.t()) :: {:ok, String.t(), pid}
   def lookup_or_start_game(registry, id) when is_binary(id) do
     # Perform a concurrent lookup first, before performing
     # a synchronized start.
@@ -55,10 +55,11 @@ defmodule Tictactoe.GameRegistry do
     case lookup_pid(id) do
       {:ok, pid} ->
         true = Process.alive?(pid)
-        {:ok, pid}
+        {:ok, id, pid}
 
       nil ->
-        {:ok, _pid} = GenServer.call(registry, {:lookup_or_start_game, id})
+        {:ok, pid} = GenServer.call(registry, {:lookup_or_start_game, id})
+        {:ok, id, pid}
     end
   end
 

@@ -16,11 +16,11 @@ defmodule Tictactoe.PlayerConn do
   def init([name: name, token: token] = options) do
     Logger.info("#{inspect(self())} PlayerConn.init(#{inspect(options)})")
 
-    {:ok, game_pid} = GameRegistry.lookup_or_start_game(token)
+    {:ok, id, game_pid} = GameRegistry.lookup_or_start_game(token)
     {:ok, player, game_state} = GameServer.join_game(game_pid, name)
     Process.monitor(game_pid)
 
-    {:push, joined_game_response(player, game_state), %{game: game_pid, player: player}}
+    {:push, joined_game_response(id, player, game_state), %{game: game_pid, player: player}}
   end
 
   def handle_in({msg, [opcode: :text]}, %{game: game} = state) do
@@ -76,11 +76,12 @@ defmodule Tictactoe.PlayerConn do
     end
   end
 
-  @spec joined_game_response(Tictactoe.Player.t(), Tictactoe.Game.t()) :: {:text, String.t()}
-  defp joined_game_response(player, game_state) do
+  @spec joined_game_response(String.t(), Tictactoe.Player.t(), Tictactoe.Game.t()) ::
+          {:text, String.t()}
+  defp joined_game_response(id, player, game_state) do
     json = %{
       "JoinedGame" => %{
-        "token" => game_state.id,
+        "token" => id,
         "player_id" => player.id,
         "state" => game_state
       }
