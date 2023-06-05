@@ -17,8 +17,8 @@ defmodule Tictactoe.GameRegistry do
   @impl true
   def init(_init_arg) do
     Process.flag(:trap_exit, true)
-    pids = :ets.new(:game_pids, [:named_table, :set, :public])
-    ids = :ets.new(:game_ids, [:named_table, :set, :public])
+    pids = :ets.new(:game_pids, [:named_table, :set, :protected, read_concurrency: true])
+    ids = :ets.new(:game_ids, [:named_table, :set, :protected, read_concurrency: true])
     {:ok, {pids, ids}}
   end
 
@@ -40,10 +40,8 @@ defmodule Tictactoe.GameRegistry do
   """
   @spec lookup_or_start_game(pid | atom, String.t()) :: {:ok, pid}
   def lookup_or_start_game(registry, id) when is_binary(id) do
-    # Logger.debug(fn -> "GameRegistry.lookup_or_start_game: #{inspect(id)}" end)
-
     # Perform a concurrent lookup first, before performing
-    # a synchronized lookup and start.
+    # a synchronized start.
 
     id =
       case String.trim(id) do
@@ -56,17 +54,11 @@ defmodule Tictactoe.GameRegistry do
 
     case lookup_pid(id) do
       {:ok, pid} ->
-        if Process.alive?(pid) do
-          {:ok, pid}
-        else
-          unregister_game(pid)
-          {:ok, pid} = GenServer.call(registry, {:lookup_or_start_game, id})
-          {:ok, pid}
-        end
+        true = Process.alive?(pid)
+        {:ok, pid}
 
       nil ->
-        {:ok, pid} = GenServer.call(registry, {:lookup_or_start_game, id})
-        {:ok, pid}
+        {:ok, _pid} = GenServer.call(registry, {:lookup_or_start_game, id})
     end
   end
 
@@ -125,9 +117,9 @@ defmodule Tictactoe.GameRegistry do
     #   "GameRegistry.handle_info: :EXIT #{inspect(pid)}: #{inspect(reason)}"
     # end)
 
-    Task.start(fn ->
-      unregister_game(pid)
-    end)
+    # Task.start(fn ->
+    unregister_game(pid)
+    # end)
 
     {:noreply, state}
   end
