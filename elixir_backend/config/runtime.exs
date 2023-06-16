@@ -6,6 +6,10 @@ port =
 
 config :tictactoe, :port, port
 
+config :tictactoe,
+       :frontend_url,
+       System.get_env("FRONTEND_URL", "http://localhost:5173")
+
 log_level = System.get_env("LOG_LEVEL", nil)
 
 if log_level do

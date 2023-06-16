@@ -12,6 +12,7 @@ primary_region = "bos"
 
 [env]
   PORT = "8080"
+  FRONTEND_URL = "https://svelte-frontend-mu.vercel.app/"
 
 [http_service]
   internal_port = 3000

@@ -12,6 +12,18 @@ defmodule Tictactoe.Router do
   plug(Plug.Parsers, parsers: [:urlencoded, :multipart], validate_utf8: true)
   plug(:dispatch)
 
+  options "/" do
+    conn
+    |> put_resp_header(
+      "Access-Control-Allow-Origin",
+      Application.get_env(:tictactoe, :frontend_url)
+    )
+    |> put_resp_header("Access-Control-Allow-Methods", "GET, OPTIONS")
+    |> put_resp_header("Access-Control-Allow-Headers", "Content-Type")
+    |> put_resp_header("Access-Control-Max-Age", "3600")
+    |> send_resp(204, "")
+  end
+
   get "/health" do
     send_resp(conn, 200, "OK\n")
   end
