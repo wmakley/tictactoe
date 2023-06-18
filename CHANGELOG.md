@@ -1,5 +1,9 @@
 # Changelog for all projects
 
+## 2023-06-18
+### Elixir Backend
+* Add Elixir backend!
+
 ## 2023-06-03
 ### Svelte Frontend
 * Do not clear the entire URL after disconnect from server.
