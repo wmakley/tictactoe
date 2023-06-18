@@ -25,7 +25,7 @@ defmodule Tictactoe.GameRegistryTest do
   test "lookup_or_start_game generates a random id if id is blank", %{
     registry: registry
   } do
-    {:ok, id, pid} = GameRegistry.lookup_or_start_game(registry, "  ")
+    {:ok, id, _pid} = GameRegistry.lookup_or_start_game(registry, "  ")
     Logger.debug("Random ID: #{inspect(id)}")
     assert id != ""
   end
