@@ -1,4 +1,4 @@
-defmodule Tictactoe.Supervisor do
+defmodule Tictactoe.System do
   use Supervisor
 
   def start_link(init_arg) do
