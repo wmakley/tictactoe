@@ -14,6 +14,15 @@ defmodule Tictactoe.GameRegistry do
     GenServer.start_link(__MODULE__, nil, opts)
   end
 
+  def child_spec(opts) do
+    %{
+      id: __MODULE__,
+      start: {__MODULE__, :start_link, [opts]},
+      restart: :permanent,
+      type: :supervisor
+    }
+  end
+
   @impl true
   def init(_init_arg) do
     Process.flag(:trap_exit, true)
