@@ -17,8 +17,9 @@ defmodule Tictactoe.PlayerConn do
     Logger.info("#{inspect(self())} PlayerConn.init(#{inspect(options)})")
 
     {:ok, id, game_pid} = GameRegistry.lookup_or_start_game(token)
+    # From now on, we crash when the game crashes:
+    Process.link(game_pid)
     {:ok, player, game_state} = GameServer.join_game(game_pid, name)
-    Process.monitor(game_pid)
 
     {:push, joined_game_response(id, player, game_state), %{game: game_pid, player: player}}
   end
@@ -63,17 +64,6 @@ defmodule Tictactoe.PlayerConn do
     # end)
 
     {:push, game_state_response(game_state), state}
-  end
-
-  def handle_info({:DOWN, _ref, :process, pid, reason}, state) do
-    # Logger.debug("#{inspect(self())} PlayerConn.handle_info(#{inspect(message)})")
-
-    if pid == state.game do
-      Logger.warn("#{inspect(self())} Game server process terminated: #{inspect(reason)}")
-      {:stop, "game exited: #{inspect(reason)}", state}
-    else
-      {:noreply, state}
-    end
   end
 
   @spec joined_game_response(String.t(), Tictactoe.Player.t(), Tictactoe.Game.t()) ::
