@@ -15,14 +15,15 @@ log_level = System.get_env("LOG_LEVEL", nil)
 if log_level do
   Logger.configure(level: String.to_atom(log_level))
 else
-  case Mix.env() do
+  case config_env() do
     :dev ->
-      Logger.configure(level: :info)
+      Logger.configure(level: :debug)
 
     :test ->
-      Logger.configure(level: :warning)
+      Logger.configure(level: :info)
 
-    :prod ->
-      Logger.configure(level: :warning)
+    _ ->
+      nil
+      # Logger.configure(level: :info)
   end
 end
