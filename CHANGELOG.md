@@ -3,6 +3,8 @@
 ## 2023-06-18
 ### Elixir Backend
 * Add Elixir backend!
+### All Backends
+* Increased connection soft and hard limits to 1000 and 1200.
 
 ## 2023-06-03
 ### Svelte Frontend

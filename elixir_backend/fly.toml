@@ -25,8 +25,8 @@ primary_region = "bos"
     handlers = ["tls", "http"]
   [services.concurrency]
     type = "connections"
-    hard_limit = 300
-    soft_limit = 200
+    hard_limit = 1200
+    soft_limit = 1000
 
   [[services.tcp_checks]]
     interval = "15s"
