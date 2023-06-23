@@ -1,4 +1,7 @@
 # Changelog for all projects
+## 2023-06-23
+### Stress Tester
+* Switch to OpenSSL, which resolves TLS handshake errors, but seems to add a bit of latency.
 
 ## 2023-06-18
 ### Elixir Backend
