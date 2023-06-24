@@ -12,6 +12,19 @@ defmodule Tictactoe.Router do
   plug(Plug.Parsers, parsers: [:urlencoded, :multipart], validate_utf8: true)
   plug(:dispatch)
 
+  get "/" do
+    url = Application.get_env(:tictactoe, :frontend_url)
+    html = Plug.HTML.html_escape(url)
+
+    conn
+    |> put_resp_header("location", url)
+    |> put_resp_header("content-type", "text/html")
+    |> send_resp(
+      conn.status || 302,
+      "<html><body>You are being <a href=\"#{html}\">redirected</a>.</body></html>"
+    )
+  end
+
   options "/" do
     conn
     |> put_resp_header(
