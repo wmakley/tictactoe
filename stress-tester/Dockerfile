@@ -2,8 +2,8 @@
 FROM rust:slim-bullseye as builder
 WORKDIR /usr/src/myapp
 
-RUN apt update && \
-    apt install -y openssl libssl-dev \
+RUN DEBIAN_FRONTEND=noninteractive apt update && \
+    apt install -y pkg-config openssl libssl-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # cache dependencies
@@ -21,7 +21,7 @@ RUN cargo install --path .
 # == production image ==
 FROM debian:bullseye-slim
 
-RUN apt update && \
+RUN DEBIAN_FRONTEND=noninteractive apt update && \
     apt install -y ca-certificates openssl \
     && rm -rf /var/lib/apt/lists/*
 RUN update-ca-certificates
