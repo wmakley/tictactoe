@@ -34,7 +34,7 @@ async fn main() {
             get(redirect_to_frontend).on(MethodFilter::OPTIONS, cors_options),
         )
         .route("/ws", get(open_conn))
-        .route("/health", get(|| async { StatusCode::OK }))
+        .route("/health", get(|| async { (StatusCode::OK, "OK\n") }))
         .route("/robots.txt", get(robots_txt))
         .fallback(get(redirect_to_frontend))
         .with_state(shared_state)
