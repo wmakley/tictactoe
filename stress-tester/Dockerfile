@@ -2,6 +2,10 @@
 FROM rust:slim-bullseye as builder
 WORKDIR /usr/src/myapp
 
+RUN apt update && \
+    apt install -y openssl libssl-dev \
+    && rm -rf /var/lib/apt/lists/*
+
 # cache dependencies
 COPY Cargo.toml .
 COPY Cargo.lock .
@@ -18,7 +22,7 @@ RUN cargo install --path .
 FROM debian:bullseye-slim
 
 RUN apt update && \
-    apt install -y ca-certificates \
+    apt install -y ca-certificates openssl \
     && rm -rf /var/lib/apt/lists/*
 RUN update-ca-certificates
 
