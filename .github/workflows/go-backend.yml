@@ -1,0 +1,24 @@
+name: Deploy Go Backend
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'go-backend/**/*'
+      - '.github/workflows/go-backend.yml'
+env:
+  FLY_API_TOKEN: ${{ secrets.GO_TOKEN }}
+jobs:
+  prod:
+    name: Prod
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Setup flyctl
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Deploy
+        working-directory: go-backend
+        run: flyctl deploy --remote-only
