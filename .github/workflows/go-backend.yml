@@ -9,8 +9,8 @@ on:
 env:
   FLY_API_TOKEN: ${{ secrets.GO_TOKEN }}
 jobs:
-  prod:
-    name: Prod
+  deploy:
+    name: Deploy Go Backend
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

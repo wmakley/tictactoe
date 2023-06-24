@@ -1,16 +1,16 @@
-name: Deploy Rust Backend
+name: Deploy Elixir Backend
 on:
   push:
     branches:
       - main
     paths:
-      - 'rust-backend/**/*'
-      - '.github/workflows/rust-backend.yml'
+      - 'elixir-backend/**/*'
+      - '.github/workflows/elixir-backend.yml'
 env:
-  FLY_API_TOKEN: ${{ secrets.RUST_TOKEN }}
+  FLY_API_TOKEN: ${{ secrets.ELIXIR_TOKEN }}
 jobs:
   deploy:
-    name: Deploy Rust Backend
+    name: Deploy Elixir Backend
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -20,5 +20,5 @@ jobs:
         uses: superfly/flyctl-actions/setup-flyctl@master
 
       - name: Deploy
-        working-directory: rust-backend
+        working-directory: elixir_backend
         run: flyctl deploy --remote-only

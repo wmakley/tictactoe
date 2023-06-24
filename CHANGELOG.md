@@ -1,7 +1,10 @@
 # Changelog for all projects
 ## 2023-06-23
+### All
+* Add automatic deployment of all three backends.
 ### Stress Tester
 * Switch to OpenSSL, which resolves TLS handshake errors, but seems to add a bit of latency.
+* Automatically build and push docker image to Docker Hub using github actions.
 
 ## 2023-06-18
 ### Elixir Backend
