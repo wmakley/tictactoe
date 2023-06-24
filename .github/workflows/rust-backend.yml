@@ -1,0 +1,23 @@
+name: Deploy
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'rust-backend/**/*'
+      - '.github/workflows/rust-backend.yml'
+env:
+  FLY_API_TOKEN: ${{ secrets.RUST_TOKEN }}
+jobs:
+  prod:
+    name: Prod
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Setup flyctl
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Deploy
+        run: flyctl deploy --remote-only

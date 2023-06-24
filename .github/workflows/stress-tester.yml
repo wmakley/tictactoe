@@ -5,6 +5,7 @@ on:
       - main
     paths:
       - 'stress-tester/**/*'
+      - '.github/workflows/stress-tester.yml'
 
 jobs:
   docker:
