@@ -1,4 +1,4 @@
-name: Deploy
+name: Deploy Rust Backend
 on:
   push:
     branches:
@@ -20,4 +20,5 @@ jobs:
         uses: superfly/flyctl-actions/setup-flyctl@master
 
       - name: Deploy
+        working-directory: rust-backend
         run: flyctl deploy --remote-only
