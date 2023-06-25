@@ -11,7 +11,8 @@ defmodule Tictactoe.System do
 
     children = [
       {Tictactoe.GameRegistry, name: Tictactoe.GameRegistry},
-      {Bandit, plug: Tictactoe.Router, scheme: :http, port: port}
+      {Plug.Cowboy, scheme: :http, plug: Tictactoe.Router, options: [port: port]}
+      # {Bandit, plug: Tictactoe.Router, scheme: :http, port: port}
     ]
 
     Supervisor.init(children, strategy: :one_for_one)

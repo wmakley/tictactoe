@@ -31,8 +31,8 @@ defmodule Tictactoe.MixProject do
   defp deps do
     [
       {:plug, "~> 1.14"},
-      # {:plug_cowboy, "~> 2.0"}
-      {:bandit, ">= 1.0.0-pre.3"},
+      {:plug_cowboy, "~> 2.0"},
+      # {:bandit, ">= 1.0.0-pre.3"},
       {:websock_adapter, "~> 0.5.1"},
       {:jason, "~> 1.4.0"}
       # {:dep_from_hexpm, "~> 0.3.0"},
