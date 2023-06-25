@@ -66,6 +66,14 @@ defmodule Tictactoe.PlayerConn do
     {:push, game_state_response(game_state), state}
   end
 
+  def handle_info({:EXIT, pid, reason}, %{game: game} = state) when pid == game do
+    Logger.debug(
+      "#{inspect(self())} PlayerConn.handle_info({:EXIT, #{inspect(pid)}, #{inspect(reason)}})"
+    )
+
+    {:stop, reason, state}
+  end
+
   @spec joined_game_response(String.t(), Tictactoe.Player.t(), Tictactoe.Game.t()) ::
           {:text, String.t()}
   defp joined_game_response(id, player, game_state) do
