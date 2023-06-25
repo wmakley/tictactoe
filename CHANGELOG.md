@@ -1,5 +1,10 @@
 # Changelog for all projects
 
+## 2023-06-25
+### Elixir Backend
+* Move environment variables that are not appropriate for all environments to
+  fly.toml, and out of Dockerfile. Caused me a huge headache!
+
 ## 2023-06-24
 ### Elixir Backend
 * Redirect / to frontend URL.

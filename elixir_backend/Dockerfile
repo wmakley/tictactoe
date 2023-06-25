@@ -91,8 +91,8 @@ USER nobody
 
 CMD ["/app/bin/tictactoe", "start"]
 # Appended by flyctl
-ENV ECTO_IPV6 true
-ENV ERL_AFLAGS "-proto_dist inet6_tcp"
+# ENV ECTO_IPV6 true
+# ENV ERL_AFLAGS "-proto_dist inet6_tcp"
 ENV PORT 3000
 ENV FRONTEND_URL "https://svelte-frontend-mu.vercel.app/"
 EXPOSE 3000

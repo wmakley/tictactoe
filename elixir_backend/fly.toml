@@ -9,6 +9,8 @@ primary_region = "bos"
 [env]
   PORT = 3000
   FRONTEND_URL = "https://svelte-frontend-mu.vercel.app/"
+  ECTO_IPV6 = "true"
+  ERL_AFLAGS = "-proto_dist inet6_tcp"
 
 [[services]]
   protocol = "tcp"
