@@ -4,7 +4,7 @@
 #
 
 app = "tictactoe-rust-backend"
-primary_region = "ord"
+primary_region = "bos"
 kill_signal = "SIGINT"
 kill_timeout = "5s"
 
@@ -12,7 +12,7 @@ kill_timeout = "5s"
   auto_rollback = true
 
 [env]
-  PRIMARY_REGION = "ord"
+  PRIMARY_REGION = "bos"
 
 [[services]]
   protocol = "tcp"

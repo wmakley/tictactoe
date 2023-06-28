@@ -3,6 +3,8 @@
 ## 2023-06-27
 ### Stress Tester
 * Capture overall elapsed time and games per second.
+### Rust Backend
+* Change region to "bos".
 
 ## 2023-06-25
 ### Elixir Backend
