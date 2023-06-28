@@ -7,6 +7,8 @@ use tokio::{
     task::JoinSet,
     time::{sleep, Duration, Instant},
 };
+use tracing::debug;
+use tracing_subscriber;
 
 #[derive(Debug, Parser)]
 struct Args {
@@ -19,6 +21,8 @@ static O_MOVES: [usize; 4] = [0, 7, 6, 3];
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    tracing_subscriber::fmt::init();
+
     let args = Args::parse();
     // println!("Options: {:?}", args);
 
@@ -242,6 +246,7 @@ async fn spawn_client(
 
     tokio::spawn(async move {
         let overall_start_time = Instant::now();
+        debug!("{} conn {}: connecting to {}", game_id, client_id, url);
         let mut conn = match connect_async(&url).await {
             Ok((conn, _resp)) => conn,
             Err(e) => {
@@ -255,6 +260,12 @@ async fn spawn_client(
             }
         };
         let time_to_connect = overall_start_time.elapsed();
+        debug!(
+            "{} conn {}: connected in {}ms",
+            game_id,
+            client_id,
+            time_to_connect.as_millis()
+        );
 
         let join_game_start_time = Instant::now();
         let mut time_to_join_response: Option<Duration> = None;
@@ -270,7 +281,7 @@ async fn spawn_client(
                         Some(Ok(msg)) => {
                             match msg {
                                 Message::Text(text) => {
-                                    // println!("conn {}: got Text: {}", id, text);
+                                    debug!("{} conn {}: got Text: {}", game_id, client_id, text);
                                     let parsed: ToBrowser = serde_json::from_str(&text).unwrap();
                                     match parsed {
                                         ToBrowser::JoinedGame { token, player_id, state } => {

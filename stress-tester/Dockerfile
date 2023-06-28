@@ -30,4 +30,5 @@ COPY --from=builder /usr/local/cargo/bin/stress-tester /usr/local/bin/stress-tes
 
 WORKDIR /app
 
+ENV RUST_LOG="info"
 ENTRYPOINT ["stress-tester"]
