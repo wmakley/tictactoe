@@ -1,5 +1,9 @@
 # Changelog for all projects
 
+## 2023-06-27
+### Stress Tester
+* Capture overall elapsed time and games per second.
+
 ## 2023-06-25
 ### Elixir Backend
 * Move environment variables that are not appropriate for all environments to

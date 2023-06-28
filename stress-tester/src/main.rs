@@ -35,6 +35,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut p2_join_times: Vec<Duration> = Vec::with_capacity(args.n);
     let mut turn_latency_samples: Vec<Duration> = Vec::with_capacity(args.n * 8);
 
+    let start_time = Instant::now();
     while let Some(r) = set.join_next().await {
         match r {
             Ok(Ok(result)) => {
@@ -56,16 +57,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             Err(e) => println!("Join Error: {:?}", e),
         }
     }
+    let elapsed = start_time.elapsed();
 
     // reporting:
 
     println!(
-        "played {} of {} requested games to completion",
+        "played {} of {} requested games to completion in {:.2}s",
         overall_times.len(),
-        args.n
+        args.n,
+        elapsed.as_secs_f64()
     );
 
     if !overall_times.is_empty() {
+        println!(
+            "games finished per second: {:.2}",
+            overall_times.len() as f64 / elapsed.as_secs_f64()
+        );
         println!(
             "mean overall game length including time to connect: {}ms",
             overall_times.iter().sum::<Duration>().as_millis() / overall_times.len() as u128
@@ -105,8 +112,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 struct GameResult {
+    /// The overall time for both connections and the game to complete
     pub overall_time: Duration,
+    /// Stats from the player 1 client
     pub p1_stats: ClientResult,
+    /// Stats from the player 2 client
     pub p2_stats: ClientResult,
 }
 
