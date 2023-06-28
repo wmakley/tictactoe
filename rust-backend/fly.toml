@@ -6,6 +6,9 @@
 app = "tictactoe-rust-backend"
 primary_region = "bos"
 
+[env]
+RUST_LOG = "info,tictactoe_rs=trace,tower_http=trace"
+
 [http_service]
   internal_port = 3000
   force_https = true
