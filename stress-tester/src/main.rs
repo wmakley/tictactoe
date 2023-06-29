@@ -7,7 +7,7 @@ use tokio::{
     task::JoinSet,
     time::{sleep, Duration, Instant},
 };
-use tracing::debug;
+use tracing::{debug, error, info, instrument, trace, warn};
 use tracing_subscriber;
 
 #[derive(Debug, Parser)]
@@ -24,7 +24,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt::init();
 
     let args = Args::parse();
-    // println!("Options: {:?}", args);
+    debug!("Options: {:?}", args);
 
     // play n games
     let mut set = JoinSet::new();
@@ -57,8 +57,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 turn_latency_samples.extend(result.p1_stats.turn_latency_samples);
                 turn_latency_samples.extend(result.p2_stats.turn_latency_samples);
             }
-            Ok(Err(e)) => println!("Game ended with error: {}", e),
-            Err(e) => println!("Join Error: {:?}", e),
+            Ok(Err(e)) => error!("Game ended with error: {}", e),
+            Err(e) => error!("Join Error: {:?}", e),
         }
     }
     let elapsed = start_time.elapsed();
@@ -373,7 +373,7 @@ async fn spawn_client(
         let result = result.unwrap();
         match result {
             Err(msg) => {
-                println!("{}", msg);
+                error!("{}", msg);
                 // There may be nobody listening on error in some cases, so
                 // ignore failures here.
                 let _ = result_tx.send(Err(msg));
