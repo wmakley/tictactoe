@@ -26,12 +26,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
     debug!("Options: {:?}", args);
 
-    // play n games
-    let mut set = JoinSet::new();
-    for i in 0..args.n {
-        set.spawn(play_test_game(i, args.address.clone()));
-    }
-
+    // allocate memory to store times
     let mut overall_times: Vec<Duration> = Vec::with_capacity(args.n);
     let mut connection_times: Vec<Duration> = Vec::with_capacity(args.n * 2);
     let mut game_times: Vec<Duration> = Vec::with_capacity(args.n * 2);
@@ -40,6 +35,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut turn_latency_samples: Vec<Duration> = Vec::with_capacity(args.n * 8);
 
     let start_time = Instant::now();
+
+    // play n games
+    let mut set = JoinSet::new();
+    for i in 0..args.n {
+        set.spawn(play_test_game(i, args.address.clone()));
+    }
+
     while let Some(r) = set.join_next().await {
         match r {
             Ok(Ok(result)) => {
