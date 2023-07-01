@@ -139,7 +139,7 @@ defmodule Tictactoe.GameRegistry do
 
   @spec random_char() :: String.t()
   defp random_char() do
-    <<Enum.random('0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ')>>
+    <<Enum.random(~c"0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")>>
   end
 
   defp unregister_game(pid) when is_pid(pid) do
