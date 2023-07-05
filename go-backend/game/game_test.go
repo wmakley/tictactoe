@@ -3,8 +3,9 @@ package game
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/stretchr/testify/require"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestGame_AddPlayer(t *testing.T) {
@@ -14,7 +15,7 @@ func TestGame_AddPlayer(t *testing.T) {
 	game.Lock()
 	defer game.Unlock()
 
-	player, err := game.AddPlayer("test")
+	player, _, err := game.AddPlayer("test")
 	require.NoError(t, err)
 	require.NotNil(t, player)
 
@@ -30,7 +31,7 @@ func TestGame_AddPlayer(t *testing.T) {
 	require.Equal(t, "test (X) has joined the game!", chatMessage.Text)
 	require.Equal(t, SourceTypeSystem, chatMessage.Source.SourceType)
 
-	player2, err := game.AddPlayer("test2")
+	player2, _, err := game.AddPlayer("test2")
 	require.NoError(t, err)
 	require.NotNil(t, player2)
 
@@ -46,7 +47,7 @@ func TestGame_AddPlayer(t *testing.T) {
 	require.Equal(t, "test2 (O) has joined the game!", chatMessage.Text)
 	require.Equal(t, SourceTypeSystem, chatMessage.Source.SourceType)
 
-	_, err = game.AddPlayer("test3")
+	_, _, err = game.AddPlayer("test3")
 	require.NotNil(t, err)
 	require.Equal(t, "game is full", err.Error())
 }
@@ -58,10 +59,10 @@ func TestGame_RemovePlayer(t *testing.T) {
 	game.Lock()
 	defer game.Unlock()
 
-	player, err := game.AddPlayer("test")
+	player, _, err := game.AddPlayer("test")
 	require.NoError(t, err)
 
-	player2, err := game.AddPlayer("test2")
+	player2, _, err := game.AddPlayer("test2")
 	require.NoError(t, err)
 	require.Equal(t, 2, len(game.State().Chat))
 
@@ -97,7 +98,7 @@ func TestJoinedGameMsg_MarshalJSON(t *testing.T) {
 	game.Lock()
 	defer game.Unlock()
 
-	player, err := game.AddPlayer("test")
+	player, _, err := game.AddPlayer("test")
 	require.NoError(t, err)
 
 	msg := NewJoinedGameMsg(game.Id(), player.Id, game.State())

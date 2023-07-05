@@ -12,4 +12,7 @@ dev:
 deploy:
 	fly deploy
 
-.PHONY: clean dev deploy
+test:
+	go test ./game
+
+.PHONY: clean dev deploy test
