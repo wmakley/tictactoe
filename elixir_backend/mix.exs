@@ -14,8 +14,8 @@ defmodule Tictactoe.MixProject do
 
   defp aliases do
     [
-      serve: "run --no-halt",
-      test: "test --no-start"
+      serve: "run --no-halt"
+      # test: "test --no-start"
     ]
   end
 

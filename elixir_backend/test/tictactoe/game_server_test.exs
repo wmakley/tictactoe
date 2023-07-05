@@ -9,7 +9,7 @@ defmodule Tictactoe.GameServerTest do
 
   setup do
     game_id = random_int_id()
-    game = start_link_supervised!({GameServer, game_id})
+    game = start_link_supervised!({GameServer, id: game_id})
     {:ok, %{game: game, game_id: game_id}}
   end
 

@@ -12,25 +12,34 @@ defmodule Tictactoe.GameServer do
 
   alias Tictactoe.Game
 
-  @spec start_link(String.t()) :: :ignore | {:error, any} | {:ok, pid}
-  def start_link(id) when is_binary(id) do
-    GenServer.start_link(__MODULE__, id, [])
+  @type id :: String.t()
+
+  @spec start_link(keyword()) :: GenServer.on_start()
+  def start_link(opts) do
+    id = Keyword.get(opts, :id)
+    start_link(id, Keyword.delete(opts, :id))
+  end
+
+  @spec start_link(id(), keyword()) :: GenServer.on_start()
+  def start_link(id, opts) when is_binary(id) do
+    Logger.debug("GameServer.start_link(#{inspect(id)}, #{inspect(opts)})")
+    GenServer.start_link(__MODULE__, id, opts)
   end
 
   ## Client
 
-  @spec join_game(pid, String.t()) ::
+  @spec join_game(GenServer.server(), String.t()) ::
           {:error, String.t()} | {:ok, Tictactoe.Player.t(), Game.t()}
-  def join_game(pid, name) when is_pid(pid) and is_binary(name) do
-    GenServer.call(pid, {:join_game, name})
+  def join_game(server, name) when is_binary(name) do
+    GenServer.call(server, {:join_game, name})
   end
 
-  @spec leave_game(pid) :: :ok
+  @spec leave_game(GenServer.server()) :: :ok
   def leave_game(game_server) do
     GenServer.cast(game_server, {:leave_game, self()})
   end
 
-  @spec add_chat_message(pid, String.t()) ::
+  @spec add_chat_message(GenServer.server(), String.t()) ::
           {:ok, Game.t()} | {:error, String.t()}
   def add_chat_message(pid, text) do
     GenServer.call(pid, {:add_chat_message, text})
@@ -63,7 +72,7 @@ defmodule Tictactoe.GameServer do
   ## Server
 
   @impl true
-  def init(id) do
+  def init(id) when is_binary(id) do
     Logger.info("#{inspect(self())} GameServer.init(#{inspect(id)})")
 
     {:ok,
@@ -197,6 +206,18 @@ defmodule Tictactoe.GameServer do
     Logger.info(
       "#{inspect(self())} GameServer.terminate(#{inspect(reason)}, id: #{inspect(state.id)})"
     )
+  end
+
+  @spec random_id() :: String.t()
+  def random_id() do
+    for _ <- 1..7,
+        into: "",
+        do: random_char()
+  end
+
+  @spec random_char() :: String.t()
+  defp random_char() do
+    <<Enum.random(~c"0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")>>
   end
 
   @spec update_game_state(map, Game.t()) :: map

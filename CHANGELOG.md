@@ -1,5 +1,11 @@
 # Changelog for all projects
 
+## 2023-07-05
+### Elixir Backend
+* Thoroughly reworked to use standard library Registry module instead of my own.
+### Go Backend
+* Fixed compile errors in game unit tests.
+
 ## 2023-06-27
 ### Stress Tester
 * Capture overall elapsed time and games per second.

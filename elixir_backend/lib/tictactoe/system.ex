@@ -10,7 +10,8 @@ defmodule Tictactoe.System do
     port = Application.fetch_env!(:tictactoe, :port)
 
     children = [
-      {Tictactoe.GameRegistry, name: Tictactoe.GameRegistry},
+      {Registry, name: Tictactoe.GameRegistry, keys: :unique},
+      {DynamicSupervisor, name: Tictactoe.GameSupervisor},
       {Plug.Cowboy, scheme: :http, plug: Tictactoe.Router, options: [port: port]}
       # {Bandit, plug: Tictactoe.Router, scheme: :http, port: port}
     ]

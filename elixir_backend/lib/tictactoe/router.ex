@@ -28,12 +28,12 @@ defmodule Tictactoe.Router do
   options "/" do
     conn
     |> put_resp_header(
-      "Access-Control-Allow-Origin",
+      "access-control-allow-origin",
       Application.get_env(:tictactoe, :frontend_url)
     )
-    |> put_resp_header("Access-Control-Allow-Methods", "GET, OPTIONS")
-    |> put_resp_header("Access-Control-Allow-Headers", "Content-Type")
-    |> put_resp_header("Access-Control-Max-Age", "3600")
+    |> put_resp_header("access-control-allow-methods", "GET, OPTIONS")
+    |> put_resp_header("access-control-allow-headers", "Content-Type")
+    |> put_resp_header("access-control-max-age", "3600")
     |> send_resp(204, "")
   end
 
@@ -52,7 +52,14 @@ defmodule Tictactoe.Router do
     token = Map.get(conn.params, "token", "")
 
     conn
-    |> WebSockAdapter.upgrade(Tictactoe.PlayerConn, [name: name, token: token], timeout: 60_000)
+    |> WebSockAdapter.upgrade(
+      Tictactoe.PlayerConn,
+      [
+        name: name,
+        token: token
+      ],
+      timeout: 60_000
+    )
     |> halt()
   end
 
