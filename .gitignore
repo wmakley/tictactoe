@@ -13,3 +13,18 @@ vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vercel
 go-backend/go-backend
+_build
+deps
+erl_crash.dump
+*.ez
+doc
+.fetch
+tmp
+tictactoe_live-*.tar
+cover
+
+# Ignore assets that are produced by build tools.
+/tictactoe_live/priv/static/assets/
+
+# Ignore digested assets cache.
+/tictactoe_live/priv/static/cache_manifest.json

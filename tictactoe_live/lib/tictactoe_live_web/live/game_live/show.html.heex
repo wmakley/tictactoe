@@ -1,0 +1,25 @@
+<.header>
+  Game <%= @game.id %>
+  <:subtitle>This is a game record from your database.</:subtitle>
+  <:actions>
+    <.link patch={~p"/games/#{@game}/show/edit"} phx-click={JS.push_focus()}>
+      <.button>Edit game</.button>
+    </.link>
+  </:actions>
+</.header>
+
+<.list>
+</.list>
+
+<.back navigate={~p"/games"}>Back to games</.back>
+
+<.modal :if={@live_action == :edit} id="game-modal" show on_cancel={JS.patch(~p"/games/#{@game}")}>
+  <.live_component
+    module={TictactoeLiveWeb.GameLive.FormComponent}
+    id={@game.id}
+    title={@page_title}
+    action={@live_action}
+    game={@game}
+    patch={~p"/games/#{@game}"}
+  />
+</.modal>

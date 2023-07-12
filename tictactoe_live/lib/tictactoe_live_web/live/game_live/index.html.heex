@@ -1,0 +1,40 @@
+<.header>
+  Listing Games
+  <:actions>
+    <.link patch={~p"/games/new"}>
+      <.button>New Game</.button>
+    </.link>
+  </:actions>
+</.header>
+
+<.table
+  id="games"
+  rows={@streams.games}
+  row_click={fn {_id, game} -> JS.navigate(~p"/games/#{game}") end}
+>
+  <:action :let={{_id, game}}>
+    <div class="sr-only">
+      <.link navigate={~p"/games/#{game}"}>Show</.link>
+    </div>
+    <.link patch={~p"/games/#{game}/edit"}>Edit</.link>
+  </:action>
+  <:action :let={{id, game}}>
+    <.link
+      phx-click={JS.push("delete", value: %{id: game.id}) |> hide("##{id}")}
+      data-confirm="Are you sure?"
+    >
+      Delete
+    </.link>
+  </:action>
+</.table>
+
+<.modal :if={@live_action in [:new, :edit]} id="game-modal" show on_cancel={JS.patch(~p"/games")}>
+  <.live_component
+    module={TictactoeLiveWeb.GameLive.FormComponent}
+    id={@game.id || :new}
+    title={@page_title}
+    action={@live_action}
+    game={@game}
+    patch={~p"/games"}
+  />
+</.modal>
