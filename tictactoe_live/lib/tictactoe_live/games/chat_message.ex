@@ -49,8 +49,8 @@ defmodule TictactoeLive.Games.ChatMessage do
   end
 end
 
-defimpl Jason.Encoder, for: Tictactoe.ChatMessage do
+defimpl Jason.Encoder, for: TictactoeLive.Games.ChatMessage do
   def encode(msg, opts) do
-    Jason.Encode.map(Tictactoe.ChatMessage.to_json(msg), opts)
+    Jason.Encode.map(TictactoeLive.Games.ChatMessage.to_json(msg), opts)
   end
 end

@@ -1,0 +1,116 @@
+<h1>Tic Tac Toe</h1>
+<div id="menu">
+  <form id="join-game-form">
+    <div class="row">
+      <div class="column">
+        <label for="player-name">Player Name</label>
+        <input type="text" id="player-name" name="name" placeholder="Player Name" maxlength="32" />
+      </div>
+      <div class="column">
+        <label for="join-token">
+          <%= if @in_game do %>
+            Code For Others to Join You
+          <% else %>
+            Game Name
+          <% end %>
+        </label>
+        <input
+          type="text"
+          id="join-token"
+          name="token"
+          placeholder="Game Name (leave blank for random)"
+          maxlength="32"
+          readonly={@in_game}
+        />
+      </div>
+      <%= if @in_game do %>
+        <div class="column">
+          <button type="button" phx-click="leave_game" class="horizontal-submit">
+            Leave Game
+          </button>
+        </div>
+      <% else %>
+        <div class="column">
+          <button type="submit" class="horizontal-submit">
+            Join or Start Game
+          </button>
+        </div>
+      <% end %>
+    </div>
+  </form>
+</div>
+
+<div class={@in_game && "hidden"}>
+  <div class="status">
+    <%= cond do %>
+      <% !@enough_players -> %>
+        Waiting for opponent...
+      <% @game_state.winner -> %>
+        <%= cond do %>
+          <% @game_state.winner == "Draw" -> %>
+            Draw!
+          <% @game_state.winner.win == @player.team -> %>
+            You won!
+          <% true -> %>
+            You lost!
+        <% end %>
+      <% @game_state.turn == @player.team -> %>
+        Your turn
+      <% true -> %>
+        Opponent's turn
+    <% end %>
+  </div>
+
+  <div class="row">
+    <div class="column">
+      <div class="game-board">
+        <%= for {square, index} <- Enum.with_index(@game_state.board) do %>
+          <.square
+            value={square}
+            disabled={
+              !@enough_players || @game_state.winner || @game_state.turn == @player.team ||
+                square == " "
+            }
+            index={index}
+          />
+        <% end %>
+      </div>
+    </div>
+
+    <div class="column">
+      <div id="chat">
+        <h2>Chat</h2>
+        <div id="chat-messages" class="chat-messages">
+          <%= for chat_message <- @game_state.chat do %>
+            <div class="chat-message" id={"chat-message-#{chat_message.id}"}>
+              <%= case chat_message.source do %>
+                <% "System" -> %>
+                  <span class="chat-message-server">
+                    System:
+                  </span>
+                <% _ -> %>
+                  <span class="chat-message-player">
+                    <%= chat_message.source.name %> (<%= chat_message.source.wins %>):
+                  </span>
+              <% end %>
+              <span class="chat-message-text"><%= chat_message.text %></span>
+            </div>
+          <% end %>
+        </div>
+        <form phx-submit="send_chat_message">
+          <div class="row">
+            <div class="column">
+              <input type="text" id="chat-msg" name="msg" placeholder="Message" />
+            </div>
+            <div class="column">
+              <input type="submit" value="Send" disabled={!@in_game || !@chat_message_valid} />
+              <%= if @game_state.winner do %>
+                <input type="button" value="Rematch!" />
+              <% end %>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>

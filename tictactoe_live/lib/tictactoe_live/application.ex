@@ -12,6 +12,9 @@ defmodule TictactoeLive.Application do
       TictactoeLiveWeb.Telemetry,
       # Start the PubSub system
       {Phoenix.PubSub, name: TictactoeLive.PubSub},
+      # Game registry
+      {Registry, keys: :unique, name: TictactoeLive.Games.GameRegistry},
+      {DynamicSupervisor, name: TictactoeLive.Games.GameSupervisor},
       # Start Finch
       {Finch, name: TictactoeLive.Finch},
       # Start the Endpoint (http/https)

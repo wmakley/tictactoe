@@ -4,6 +4,8 @@ defmodule TictactoeLive.Games do
   """
 
   alias TictactoeLive.Games.GameServer
+  alias TictactoeLive.Games.GameRegistry
+  alias TictactoeLive.Games.GameSupervisor
 
   @spec lookup_or_start_game(String.t()) :: {:ok, GameServer.id(), pid}
   def lookup_or_start_game(id) when is_binary(id) do
@@ -22,7 +24,7 @@ defmodule TictactoeLive.Games do
     end
   end
 
-  @spec game_name(String.t()) :: {:via, Registry, {Tictactoe.GameRegistry, binary}}
+  @spec game_name(String.t()) :: {:via, Registry, {GameRegistry, binary}}
   defp game_name(id) when is_binary(id) do
     {:via, Registry, {GameRegistry, id}}
   end

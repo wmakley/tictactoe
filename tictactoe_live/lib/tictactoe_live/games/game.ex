@@ -327,8 +327,8 @@ defmodule TictactoeLive.Games.Game do
   end
 end
 
-defimpl Jason.Encoder, for: Tictactoe.Game do
+defimpl Jason.Encoder, for: TictactoeLive.Games.Game do
   def encode(game, opts) do
-    Jason.Encode.map(Tictactoe.Game.to_json(game), opts)
+    Jason.Encode.map(TictactoeLive.Games.Game.to_json(game), opts)
   end
 end
