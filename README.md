@@ -13,7 +13,8 @@ Each project contains a README with specific information about that project.
 
 ## Current Backends:
 
-* Rust (on fly.io)
-* Go (on fly.io)
+* Rust
+* Go
+* Eliixir
 
 Backends may be switched on the fly!
