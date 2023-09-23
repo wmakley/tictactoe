@@ -1,5 +1,10 @@
 # Changelog for all projects
 
+## 2023-09-23
+### Go Backend
+* Update to Go 1.21.0.
+* Add debug log to see if a goroutine always exits as it should.
+
 ## 2023-07-05
 ### Elixir Backend
 * Thoroughly reworked to use standard library Registry module instead of my own.

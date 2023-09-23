@@ -7,7 +7,7 @@ clean:
 	rm go-backend
 
 dev:
-	go run .
+	HOST=127.0.0.1 go run .
 
 deploy:
 	fly deploy

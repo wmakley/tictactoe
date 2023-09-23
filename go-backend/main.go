@@ -21,6 +21,10 @@ func main() {
 	if frontendUrl == "" {
 		frontendUrl = "http://localhost:5173"
 	}
+	host := os.Getenv("HOST")
+	if host == "" {
+		host = "0.0.0.0"
+	}
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "3000"
@@ -35,7 +39,7 @@ func main() {
 	mux.Handle("/robots.txt", robotsTxtHandler())
 	mux.Handle("/ws", websocketHandler(state))
 
-	addr := fmt.Sprintf("0.0.0.0:%s", port)
+	addr := fmt.Sprintf("%s:%s", host, port)
 	log.Println("listening on", addr)
 
 	err := http.ListenAndServe(addr, mux)
@@ -190,6 +194,7 @@ func websocketHandler(state server.State) http.HandlerFunc {
 				decodeErr := json.NewDecoder(bytes.NewReader(msg)).Decode(&decodedMsg)
 				if decodeErr != nil {
 					log.Println(g.Id(), "fatal error decoding msg:", decodeErr)
+					// TODO: does this leak a goroutine?
 					return
 				} else {
 					//log.Printf("decoded msg: %+v", decodedMsg)
