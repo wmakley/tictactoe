@@ -220,6 +220,7 @@ func readFromWebsocket(ctx context.Context, c *websocket.Conn, incomingMsgs chan
 		_, msg, err := c.Read(ctx)
 		if err != nil {
 			fatalSocketErr <- err
+			log.Println("error reading from websocket, exiting read loop goroutine:", err)
 			return
 		}
 		incomingMsgs <- msg

@@ -1,4 +1,4 @@
-FROM golang:1.19.1 AS build
+FROM golang:1.21.0 AS build
 
 # Set destination for COPY
 WORKDIR /app
