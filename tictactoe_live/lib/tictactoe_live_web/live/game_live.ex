@@ -1,4 +1,4 @@
-defmodule TictactoeLiveWeb.GameLive.Game do
+defmodule TictactoeLiveWeb.GameLive do
   require Logger
   use TictactoeLiveWeb, :live_view
 
