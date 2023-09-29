@@ -12,11 +12,11 @@ defmodule TictactoeLive.Application do
       TictactoeLiveWeb.Telemetry,
       # Start the PubSub system
       {Phoenix.PubSub, name: TictactoeLive.PubSub},
+      # Start Finch
+      {Finch, name: TictactoeLive.Finch},
       # Game registry
       {Registry, keys: :unique, name: TictactoeLive.Games.GameRegistry},
       {DynamicSupervisor, name: TictactoeLive.Games.GameSupervisor},
-      # Start Finch
-      {Finch, name: TictactoeLive.Finch},
       # Start the Endpoint (http/https)
       TictactoeLiveWeb.Endpoint
       # Start a worker by calling: TictactoeLive.Worker.start_link(arg)

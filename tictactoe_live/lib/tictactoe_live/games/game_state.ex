@@ -1,4 +1,8 @@
-defmodule TictactoeLive.Games.Game do
+defmodule TictactoeLive.Games.GameState do
+  @moduledoc """
+  Data structure representing the state of a game of Tic-Tac-Toe.
+  """
+
   defstruct players: [],
             board: [" ", " ", " ", " ", " ", " ", " ", " ", " "],
             turn: "X",
@@ -14,9 +18,11 @@ defmodule TictactoeLive.Games.Game do
     %__MODULE__{}
   end
 
-  def add_player(%__MODULE__{players: players} = game, name) do
+  @spec add_player(%__MODULE__{}, String.t()) ::
+          {:ok, %Player{}, %__MODULE__{}} | {:error, String.t()}
+  def add_player(%__MODULE__{players: players} = game, name) when is_binary(name) do
     if length(players) == 2 do
-      {:error, "Game is full", game}
+      {:error, "Game is full"}
     else
       case List.last(players) do
         nil ->
@@ -31,7 +37,8 @@ defmodule TictactoeLive.Games.Game do
     end
   end
 
-  defp add_player(%__MODULE__{} = game, name, id, team) do
+  defp add_player(%__MODULE__{} = game, name, id, team)
+       when is_binary(name) and is_integer(id) and is_binary(team) do
     player = %Player{id: id, name: name, team: team}
 
     game =
@@ -39,6 +46,19 @@ defmodule TictactoeLive.Games.Game do
       |> add_chat_message(:system, "#{name} (#{team}) has joined the game")
 
     {:ok, player, game}
+  end
+
+  @spec enough_players?(%__MODULE__{}) :: boolean()
+  def enough_players?(%__MODULE__{} = game) do
+    length(game.players) == 2
+  end
+
+  @doc """
+  Return true if the game is in progress (all players have joined, but no winner yet)
+  """
+  @spec in_game?(%__MODULE__{}) :: boolean()
+  def in_game?(%__MODULE__{winner: winner} = game) do
+    winner == nil && enough_players?(game)
   end
 
   def update_player_name(%__MODULE__{} = game, id, name)
@@ -84,9 +104,22 @@ defmodule TictactoeLive.Games.Game do
     end
   end
 
+  def chat_messages_with_player_details(%__MODULE__{chat: chat} = game) do
+    Enum.map(chat, fn chat_message ->
+      case chat_message.source do
+        {:player, id} ->
+          {:ok, player} = find_player(game, id)
+          %ChatMessage{chat_message | source: {:player, player}}
+
+        :system ->
+          chat_message
+      end
+    end)
+  end
+
   @spec find_player(game :: %__MODULE__{}, id :: integer) ::
           {:ok, %Player{}} | {:error, String.t()}
-  defp find_player(%__MODULE__{} = game, id) when is_integer(id) do
+  def find_player(%__MODULE__{} = game, id) when is_integer(id) do
     case Enum.find(game.players, fn p -> p.id == id end) do
       nil ->
         {:error, "Player not found"}
@@ -327,8 +360,8 @@ defmodule TictactoeLive.Games.Game do
   end
 end
 
-defimpl Jason.Encoder, for: TictactoeLive.Games.Game do
+defimpl Jason.Encoder, for: TictactoeLive.Games.GameState do
   def encode(game, opts) do
-    Jason.Encode.map(TictactoeLive.Games.Game.to_json(game), opts)
+    Jason.Encode.map(TictactoeLive.Games.GameState.to_json(game), opts)
   end
 end

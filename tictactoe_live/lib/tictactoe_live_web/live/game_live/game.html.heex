@@ -1,10 +1,17 @@
-<h1>Tic Tac Toe</h1>
+<h1 class="text-5xl font-semibold leading-tight tracking-tight">Tic Tac Toe</h1>
 <div id="menu">
-  <form id="join-game-form">
-    <div class="row">
+  <form phx-change="form_changed" phx-submit="join_game" id="join-game-form">
+    <div class="flex gap-3">
       <div class="column">
         <label for="player-name">Player Name</label>
-        <input type="text" id="player-name" name="name" placeholder="Player Name" maxlength="32" />
+        <input
+          type="text"
+          id="player-name"
+          name="player_name"
+          placeholder="Player Name"
+          maxlength="32"
+          value={@form.player_name}
+        />
       </div>
       <div class="column">
         <label for="join-token">
@@ -17,21 +24,29 @@
         <input
           type="text"
           id="join-token"
-          name="token"
+          name="join_token"
           placeholder="Game Name (leave blank for random)"
           maxlength="32"
           readonly={@in_game}
+          value={@form.join_token}
         />
       </div>
       <%= if @in_game do %>
         <div class="column">
-          <button type="button" phx-click="leave_game" class="horizontal-submit">
+          <button
+            type="button"
+            phx-click="leave_game"
+            class="horizontal-submit bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+          >
             Leave Game
           </button>
         </div>
       <% else %>
         <div class="column">
-          <button type="submit" class="horizontal-submit">
+          <button
+            type="submit"
+            class="horizontal-submit bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+          >
             Join or Start Game
           </button>
         </div>
@@ -39,11 +54,10 @@
     </div>
   </form>
 </div>
-
-<div class={@in_game && "hidden"}>
+<div class={!@in_game && "hidden"}>
   <div class="status">
     <%= cond do %>
-      <% !@enough_players -> %>
+      <% !GameState.enough_players?(@game_state) -> %>
         Waiting for opponent...
       <% @game_state.winner -> %>
         <%= cond do %>
@@ -67,10 +81,7 @@
         <%= for {square, index} <- Enum.with_index(@game_state.board) do %>
           <.square
             value={square}
-            disabled={
-              !@enough_players || @game_state.winner || @game_state.turn == @player.team ||
-                square == " "
-            }
+            disabled={!@in_game || !@my_turn || square == " "}
             index={index}
           />
         <% end %>
@@ -81,16 +92,16 @@
       <div id="chat">
         <h2>Chat</h2>
         <div id="chat-messages" class="chat-messages">
-          <%= for chat_message <- @game_state.chat do %>
+          <%= for chat_message <- GameState.chat_messages_with_player_details(@game_state) do %>
             <div class="chat-message" id={"chat-message-#{chat_message.id}"}>
               <%= case chat_message.source do %>
-                <% "System" -> %>
+                <% :system -> %>
                   <span class="chat-message-server">
                     System:
                   </span>
-                <% _ -> %>
+                <% {:player, player} -> %>
                   <span class="chat-message-player">
-                    <%= chat_message.source.name %> (<%= chat_message.source.wins %>):
+                    <%= player.name %> (<%= player.team %>):
                   </span>
               <% end %>
               <span class="chat-message-text"><%= chat_message.text %></span>

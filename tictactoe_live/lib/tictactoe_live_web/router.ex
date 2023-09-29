@@ -8,6 +8,11 @@ defmodule TictactoeLiveWeb.Router do
     plug :put_root_layout, html: {TictactoeLiveWeb.Layouts, :root}
     plug :protect_from_forgery
     plug :put_secure_browser_headers
+    plug :assign_current_date
+  end
+
+  defp assign_current_date(conn, _opts) do
+    assign(conn, :current_date, DateTime.utc_now())
   end
 
   pipeline :api do

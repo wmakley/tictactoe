@@ -1,7 +1,7 @@
 defmodule TictactoeLive.Games.GameServer do
   @moduledoc """
   A game server process, which manages a single game.
-  See: TictactoeLive.Games.Game
+  See: TictactoeLive.Games.GameState
 
   Monitors player connections. If the player process is killed,
   the player is removed from the game.
@@ -10,7 +10,7 @@ defmodule TictactoeLive.Games.GameServer do
 
   require Logger
 
-  alias TictactoeLive.Games.Game
+  alias TictactoeLive.Games.GameState
 
   @type id :: String.t()
 
@@ -29,34 +29,34 @@ defmodule TictactoeLive.Games.GameServer do
   ## Client
 
   @spec join_game(GenServer.server(), String.t()) ::
-          {:error, String.t()} | {:ok, Tictactoe.Player.t(), Game.t()}
+          {:error, String.t()} | {:ok, Tictactoe.Player.t(), GameState.t()}
   def join_game(server, name) when is_binary(name) do
     GenServer.call(server, {:join_game, name})
   end
 
   @spec leave_game(GenServer.server()) :: :ok
   def leave_game(game_server) do
-    GenServer.cast(game_server, {:leave_game, self()})
+    GenServer.cast(game_server, {:disconnect, self()})
   end
 
   @spec add_chat_message(GenServer.server(), String.t()) ::
-          {:ok, Game.t()} | {:error, String.t()}
+          {:ok, GameState.t()} | {:error, String.t()}
   def add_chat_message(pid, text) do
     GenServer.call(pid, {:add_chat_message, text})
   end
 
   @spec update_player_name(pid, String.t()) ::
-          {:ok, Game.t()} | {:error, String.t()}
+          {:ok, GameState.t()} | {:error, String.t()}
   def update_player_name(pid, new_name) do
     GenServer.call(pid, {:update_player_name, new_name})
   end
 
-  @spec take_turn(pid, integer) :: {:ok, Game.t()} | {:error, String.t()}
+  @spec take_turn(pid, integer) :: {:ok, GameState.t()} | {:error, String.t()}
   def take_turn(pid, space) do
     GenServer.call(pid, {:take_turn, space})
   end
 
-  @spec rematch(pid) :: {:ok, Game.t()} | {:error, String.t()}
+  @spec rematch(pid) :: {:ok, GameState.t()} | {:error, String.t()}
   def rematch(pid) do
     GenServer.call(pid, {:rematch})
   end
@@ -79,7 +79,7 @@ defmodule TictactoeLive.Games.GameServer do
      %{
        id: id,
        connections: %{},
-       game: Game.new()
+       game: GameState.new()
      }}
   end
 
@@ -89,7 +89,7 @@ defmodule TictactoeLive.Games.GameServer do
       "#{inspect(self())} GameServer.handle_call(#{inspect(params)}, from: #{inspect(caller)})"
     )
 
-    case Game.add_player(state.game, name) do
+    case GameState.add_player(state.game, name) do
       {:ok, player, game} ->
         {:reply, {:ok, player, game},
          state
@@ -97,8 +97,8 @@ defmodule TictactoeLive.Games.GameServer do
          |> broadcast_state_to_players()
          |> add_connection(caller, player.id)}
 
-      {:error, reason, game} ->
-        {:reply, {:error, reason}, %{state | game: game}}
+      {:error, reason} ->
+        {:reply, {:error, reason}, state}
     end
   end
 
@@ -109,7 +109,7 @@ defmodule TictactoeLive.Games.GameServer do
     )
 
     with {:ok, player_id} <- get_player_id(state, pid),
-         {:ok, game_state} <- Game.update_player_name(state.game, player_id, new_name) do
+         {:ok, game_state} <- GameState.update_player_name(state.game, player_id, new_name) do
       {:reply, {:ok, game_state},
        state
        |> update_game_state(game_state)
@@ -126,7 +126,7 @@ defmodule TictactoeLive.Games.GameServer do
     )
 
     with {:ok, player_id} <- get_player_id(state, pid),
-         {:ok, game_state} <- Game.add_player_chat_message(state.game, player_id, text) do
+         {:ok, game_state} <- GameState.add_player_chat_message(state.game, player_id, text) do
       {:reply, {:ok, game_state},
        state
        |> update_game_state(game_state)
@@ -144,7 +144,7 @@ defmodule TictactoeLive.Games.GameServer do
     )
 
     with {:ok, player_id} <- get_player_id(state, pid),
-         {:ok, game_state} <- Game.take_turn(state.game, player_id, position) do
+         {:ok, game_state} <- GameState.take_turn(state.game, player_id, position) do
       {:reply, {:ok, game_state},
        state
        |> update_game_state(game_state)
@@ -159,7 +159,7 @@ defmodule TictactoeLive.Games.GameServer do
     Logger.debug("#{inspect(self())} GameServer.handle_call(#{inspect(msg)}, #{inspect(from)})")
 
     with {:ok, player_id} <- get_player_id(state, pid),
-         {:ok, game_state} <- Game.rematch(state.game, player_id) do
+         {:ok, game_state} <- GameState.rematch(state.game, player_id) do
       {:reply, {:ok, game_state},
        state
        |> update_game_state(game_state)
@@ -220,7 +220,7 @@ defmodule TictactoeLive.Games.GameServer do
     <<Enum.random(~c"0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")>>
   end
 
-  @spec update_game_state(map, Game.t()) :: map
+  @spec update_game_state(map, GameState.t()) :: map
   defp update_game_state(state, game_state) do
     %{state | game: game_state}
   end
@@ -230,7 +230,7 @@ defmodule TictactoeLive.Games.GameServer do
 
     {:ok, player_id, state} = remove_connection(state, pid)
 
-    {:ok, game} = Game.remove_player(state.game, player_id)
+    {:ok, game} = GameState.remove_player(state.game, player_id)
 
     state
     |> update_game_state(game)
