@@ -1,6 +1,6 @@
 defmodule TictactoeLive.Games.GameServer do
   @moduledoc """
-  A game server process, which manages a single game.
+  A game server process, which manages a single GameState.
   See: TictactoeLive.Games.GameState
 
   Monitors player connections. If the player process is killed,

@@ -3,8 +3,12 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href={~p"/assets/favicon.ico"} />
+    <link rel="apple-touch-icon" sizes="180x180" href={~p"/assets/apple-touch-icon.png"} />
+    <link rel="icon" type="image/png" sizes="32x32" href={~p"/assets/favicon-32x32.png"} />
+    <link rel="icon" type="image/png" sizes="16x16" href={~p"/assets/favicon-16x16.png"} />
     <meta name="csrf-token" content={get_csrf_token()} />
-    <.live_title suffix=" · Phoenix Framework">
+    <.live_title suffix=" · Tic Tac Toe Live">
       <%= assigns[:page_title] || "Tic Tac Toe" %>
     </.live_title>
     <link
@@ -12,11 +16,21 @@
       rel="stylesheet"
       href="https://fonts.googleapis.com/css?family=Roboto:300,300italic,700,700italic"
     />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/milligram/1.4.1/milligram.css"
+    />
     <link phx-track-static rel="stylesheet" href={~p"/assets/app.css"} />
     <script defer phx-track-static type="text/javascript" src={~p"/assets/app.js"}>
     </script>
   </head>
-  <body class="bg-white antialiased">
-    <%= @inner_content %>
+  <body>
+    <div style="display: contents">
+      <%= @inner_content %>
+    </div>
   </body>
 </html>

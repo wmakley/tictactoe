@@ -36,6 +36,7 @@ defmodule TictactoeLiveWeb.GameLive do
        when is_binary(player_name) and is_binary(join_token) do
     socket
     |> assign(:form, Form.new())
+    |> assign(:chat_message, "")
     |> assign(:join_token, String.trim(join_token))
     # Default player is X, with no name
     |> assign(:player, Player.new())
@@ -103,6 +104,24 @@ defmodule TictactoeLiveWeb.GameLive do
      socket
      |> assign(:game_pid, nil)
      |> assign(:game_ref, nil)
+     |> update_ui_from_game_state()}
+  end
+
+  def handle_event("validate_chat_message", %{"msg" => msg}, socket) do
+    {:noreply,
+     socket
+     |> assign(:chat_message, msg)
+     |> assign(:chat_message_valid, String.trim(msg) != "")}
+  end
+
+  def handle_event("send_chat_message", %{"msg" => msg}, socket) do
+    {:ok, game_state} = GameServer.add_chat_message(socket.assigns.game_pid, String.trim(msg))
+
+    {:noreply,
+     socket
+     |> assign(:chat_message, "")
+     |> assign(:chat_message_valid, false)
+     |> assign(:game_state, game_state)
      |> update_ui_from_game_state()}
   end
 

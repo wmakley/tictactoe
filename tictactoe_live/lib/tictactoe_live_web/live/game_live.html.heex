@@ -1,7 +1,7 @@
 <h1 class="text-5xl font-semibold leading-tight tracking-tight">Tic Tac Toe</h1>
 <div id="menu">
   <form phx-change="form_changed" phx-submit="join_game" id="join-game-form">
-    <div class="flex gap-3">
+    <div class="row flex gap-3">
       <div class="column">
         <label for="player-name">Player Name</label>
         <input
@@ -90,7 +90,7 @@
 
     <div class="column">
       <div id="chat">
-        <h2>Chat</h2>
+        <h2 class="text-4xl font-semibold leading-tight tracking-tight">Chat</h2>
         <div id="chat-messages" class="chat-messages">
           <%= for chat_message <- GameState.chat_messages_with_player_details(@game_state) do %>
             <div class="chat-message" id={"chat-message-#{chat_message.id}"}>
@@ -108,10 +108,16 @@
             </div>
           <% end %>
         </div>
-        <form phx-submit="send_chat_message">
+        <form phx-change="validate_chat_message" phx-submit="send_chat_message">
           <div class="row">
             <div class="column">
-              <input type="text" id="chat-msg" name="msg" placeholder="Message" />
+              <input
+                type="text"
+                id="chat-msg"
+                name="msg"
+                placeholder="Message"
+                value={@chat_message}
+              />
             </div>
             <div class="column">
               <input type="submit" value="Send" disabled={!@in_game || !@chat_message_valid} />

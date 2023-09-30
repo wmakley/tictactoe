@@ -1,8 +1,84 @@
-@import "tailwindcss/base";
-@import "tailwindcss/components";
-@import "tailwindcss/utilities";
+/* @import "tailwindcss/base"; */
+/* @import "tailwindcss/components"; */
+/* @import "tailwindcss/utilities"; */
 
 /* This file is for your main application CSS */
+/* body {
+  font-family: "Roboto", "Helvetica Neue", "Helvetica", "Arial", sans-serif;
+} */
+
 body {
   font-family: "Roboto", "Helvetica Neue", "Helvetica", "Arial", sans-serif;
+  color: #F08;
+  background-color: #FFF;
+}
+
+.hidden {
+  display: none !important;
+  visibility: hidden !important;
+}
+
+.horizontal-submit {
+  margin-top: 31px;
+}
+
+.chat-messages {
+  border: 1px dashed gray;
+  border-radius: 0.5em;
+  max-height: 300px;
+  overflow-y: scroll;
+  padding: 1.0em 1.0em 0 1.0em;
+  margin-bottom: 1.0em;
+}
+
+.chat-message-server,
+.chat-message-player {
+  font-weight: bold;
+}
+
+.chat-msg {
+  border-bottom: 1px dashed gray;
+  padding: 0.5em;
+}
+
+.game-board {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.game-square {
+  display: inline-block;
+
+  width: calc(100% * (1/3) - 10px - 1px);
+  height: 1.7em;
+  margin: 5px;
+  padding: 0;
+
+  color: #FFF;
+  background-color: #CCC;
+  opacity: 0.6;
+  transition: 0.3s;
+
+  font-size: 4.0em;
+  text-align: center;
+  font-weight: bold;
+
+  cursor: pointer;
+}
+
+.game-square.disabled {
+  cursor: not-allowed;
+}
+
+.game-square.x {
+  background-color: #F08;
+}
+
+.game-square.o {
+  background-color: #08F;
+}
+
+.game-square:hover {
+  opacity: 1.0;
 }
