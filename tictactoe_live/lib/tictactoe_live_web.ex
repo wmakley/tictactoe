@@ -18,7 +18,7 @@ defmodule TictactoeLiveWeb do
   """
 
   def static_paths do
-    ~w(assets fonts images favicon.ico robots.txt android-chrome-192x192.png android-chrome-512x512.png apple-touch-icon.png favicon-16x16.png favicon-32x32.png)
+    ~w(assets fonts images favicon.ico robots.txt android-chrome-192x192.png android-chrome-512x512.png apple-touch-icon.png favicon-16x16.png favicon-32x32.png site.webmanifest)
   end
 
   def router do
