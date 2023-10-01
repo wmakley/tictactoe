@@ -157,6 +157,15 @@ defmodule TictactoeLiveWeb.GameLive do
      |> update_ui_from_game_state()}
   end
 
+  def handle_event("rematch", _params, socket) do
+    {:ok, game_state} = GameServer.rematch(socket.assigns.game_pid)
+
+    {:noreply,
+     socket
+     |> assign(:game_state, game_state)
+     |> update_ui_from_game_state()}
+  end
+
   @impl true
   def handle_info({:DOWN, ref, :process, _object, _reason}, socket)
       when ref == socket.assigns.game_ref do
@@ -190,10 +199,10 @@ defmodule TictactoeLiveWeb.GameLive do
 
     # Game server tracks wins and losses in the player record
     my_turn = player.team == game_state.turn
-    Logger.debug("#{player.name}: my_turn: #{inspect(my_turn)}")
+    # Logger.debug("#{player.name}: my_turn: #{inspect(my_turn)}")
 
     in_game = socket.assigns.game_pid != nil
-    Logger.debug("#{player.name}: in_game: #{inspect(in_game)}")
+    # Logger.debug("#{player.name}: in_game: #{inspect(in_game)}")
 
     # if in_game do
     #   {:ok, player} = GameState.find_player(game_state, player.id)

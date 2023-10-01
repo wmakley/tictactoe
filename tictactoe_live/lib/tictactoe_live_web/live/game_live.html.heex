@@ -64,7 +64,7 @@
         <%= cond do %>
           <% @game_state.winner == "Draw" -> %>
             Draw!
-          <% @game_state.winner.win == @player.team -> %>
+          <% @game_state.winner == @player.team -> %>
             You won!
           <% true -> %>
             You lost!
