@@ -183,6 +183,8 @@ defmodule TictactoeLiveWeb.GameLive do
   end
 
   defp update_ui_from_game_state(socket) do
+    Logger.debug("#{inspect(self())} update_ui_from_game_state()")
+
     player = socket.assigns.player
     game_state = socket.assigns.game_state
 

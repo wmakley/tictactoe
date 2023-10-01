@@ -7,10 +7,8 @@ defmodule TictactoeLiveWeb.GameComponents do
   attr :rest, :global
 
   def square(assigns) do
-    Logger.debug("square(#{inspect(assigns)})")
-
     ~H"""
-    <div class={["game-square", @disabled && "disabled"]} {@rest}>
+    <div class={["game-square", @disabled && "disabled", !@disabled && "enabled", String.downcase(@value)]} {@rest}>
       <%= @value %>
     </div>
     """
