@@ -39,6 +39,7 @@ defmodule TictactoeLive.Games.GameState do
 
   defp add_player(%__MODULE__{} = game, name, id, team)
        when is_binary(name) and is_integer(id) and is_binary(team) do
+    name = normalize_player_name(name)
     player = %Player{id: id, name: name, team: team}
 
     game =
@@ -46,6 +47,18 @@ defmodule TictactoeLive.Games.GameState do
       |> add_chat_message(:system, "#{name} (#{team}) has joined the game")
 
     {:ok, player, game}
+  end
+
+  defp normalize_player_name(player_name) when is_binary(player_name) do
+    trimmed = String.trim(player_name)
+
+    case trimmed do
+      "" ->
+        "Unnamed Player"
+
+      _ ->
+        trimmed
+    end
   end
 
   @spec enough_players?(%__MODULE__{}) :: boolean()
@@ -61,25 +74,18 @@ defmodule TictactoeLive.Games.GameState do
     winner == nil && enough_players?(game)
   end
 
+  @spec update_player_name(%__MODULE__{}, integer, String.t()) ::
+          {:ok, String.t(), %__MODULE__{}} | {:error, String.t()}
   def update_player_name(%__MODULE__{} = game, id, name)
       when is_integer(id) and is_binary(name) do
-    trimmed = String.trim(name)
+    name = normalize_player_name(name)
 
-    normalized =
-      case trimmed do
-        "" ->
-          "Unnamed Player"
-
-        _ ->
-          trimmed
-      end
-
-    with {:ok, game} <- update_player(game, id, fn p -> %{p | name: normalized} end) do
+    with {:ok, game} <- update_player(game, id, fn p -> %{p | name: name} end) do
       game =
         game
-        |> add_chat_message({:player, id}, "Now my name is \"#{normalized}\"!")
+        |> add_chat_message({:player, id}, "Now my name is \"#{name}\"!")
 
-      {:ok, game}
+      {:ok, name, game}
     else
       {:error, reason} ->
         {:error, reason}

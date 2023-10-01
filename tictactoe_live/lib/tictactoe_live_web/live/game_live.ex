@@ -50,13 +50,39 @@ defmodule TictactoeLiveWeb.GameLive do
 
   @impl true
   def handle_event("form_changed", params, socket) do
-    # TODO: may not be needed
+    # TODO: this handler may not be needed
     form = socket.assigns.form
     player_name = Map.get(params, "player_name", "")
     join_token = Map.get(params, "join_token", "")
 
-    {:noreply,
-     socket |> assign(:form, %{form | player_name: player_name, join_token: join_token})}
+    # update form values
+    form = %{form | player_name: player_name, join_token: join_token}
+
+    {:noreply, socket |> assign(:form, form)}
+  end
+
+  def handle_event("update_player_name", %{"value" => name}, socket) do
+    name = String.trim(name)
+    player = socket.assigns.player
+
+    if in_game?(socket) && name != player.name do
+      form = socket.assigns.form
+      form = %{form | player_name: name}
+
+      {:ok, normalized_name, game_state} =
+        GameServer.update_player_name(socket.assigns.game_pid, name)
+
+      player = %{player | name: normalized_name}
+
+      {:noreply,
+       socket
+       |> assign(:form, form)
+       |> assign(:game_state, game_state)
+       |> assign(:player, player)
+       |> update_ui_from_game_state()}
+    else
+      {:noreply, socket}
+    end
   end
 
   def handle_event(
@@ -64,13 +90,9 @@ defmodule TictactoeLiveWeb.GameLive do
         %{"player_name" => player_name, "join_token" => join_token} = _params,
         socket
       ) do
+    # TODO: trimming is probably redundant here
     join_token = String.trim(join_token)
-
-    player_name =
-      case String.trim(player_name) do
-        "" -> "Unnamed Player"
-        trimmed -> trimmed
-      end
+    player_name = String.trim(player_name)
 
     form = socket.assigns.form
 
@@ -125,6 +147,16 @@ defmodule TictactoeLiveWeb.GameLive do
      |> update_ui_from_game_state()}
   end
 
+  def handle_event("take_turn", %{"square" => square}, socket) do
+    index = String.to_integer(square)
+    {:ok, game_state} = GameServer.take_turn(socket.assigns.game_pid, index)
+
+    {:noreply,
+     socket
+     |> assign(:game_state, game_state)
+     |> update_ui_from_game_state()}
+  end
+
   @impl true
   def handle_info({:DOWN, ref, :process, _object, _reason}, socket)
       when ref == socket.assigns.game_ref do
@@ -146,14 +178,28 @@ defmodule TictactoeLiveWeb.GameLive do
      |> update_ui_from_game_state()}
   end
 
+  defp in_game?(socket) do
+    socket.assigns.in_game
+  end
+
   defp update_ui_from_game_state(socket) do
     player = socket.assigns.player
     game_state = socket.assigns.game_state
 
-    # TODO: find own player in the game state and copy locally
+    # Game server tracks wins and losses in the player record
+    my_turn = player.team == game_state.turn
+    Logger.debug("#{player.name}: my_turn: #{inspect(my_turn)}")
+
+    in_game = socket.assigns.game_pid != nil
+    Logger.debug("#{player.name}: in_game: #{inspect(in_game)}")
+
+    # if in_game do
+    #   {:ok, player} = GameState.find_player(game_state, player.id)
+    #   Logger.debug("player: #{inspect(me)}")
+    # end
 
     socket
-    |> assign(:my_turn, player.team == game_state.turn)
-    |> assign(:in_game, socket.assigns.game_pid != nil)
+    |> assign(:my_turn, my_turn)
+    |> assign(:in_game, in_game)
   end
 end

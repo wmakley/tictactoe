@@ -46,7 +46,7 @@ defmodule TictactoeLive.Games.GameServer do
   end
 
   @spec update_player_name(pid, String.t()) ::
-          {:ok, GameState.t()} | {:error, String.t()}
+          {:ok, String.t(), GameState.t()} | {:error, String.t()}
   def update_player_name(pid, new_name) do
     GenServer.call(pid, {:update_player_name, new_name})
   end
@@ -109,8 +109,9 @@ defmodule TictactoeLive.Games.GameServer do
     )
 
     with {:ok, player_id} <- get_player_id(state, pid),
-         {:ok, game_state} <- GameState.update_player_name(state.game, player_id, new_name) do
-      {:reply, {:ok, game_state},
+         {:ok, normalized_name, game_state} <-
+           GameState.update_player_name(state.game, player_id, new_name) do
+      {:reply, {:ok, normalized_name, game_state},
        state
        |> update_game_state(game_state)
        |> broadcast_state_to_players()}

@@ -1,6 +1,6 @@
 <h1 class="text-5xl font-semibold leading-tight tracking-tight">Tic Tac Toe</h1>
 <div id="menu">
-  <form phx-change="form_changed" phx-submit="join_game" id="join-game-form">
+  <form phx-submit="join_game" id="join-game-form">
     <div class="row flex gap-3">
       <div class="column">
         <label for="player-name">Player Name</label>
@@ -10,6 +10,7 @@
           name="player_name"
           placeholder="Player Name"
           maxlength="32"
+          phx-blur="update_player_name"
           value={@form.player_name}
         />
       </div>
@@ -81,8 +82,9 @@
         <%= for {square, index} <- Enum.with_index(@game_state.board) do %>
           <.square
             value={square}
-            disabled={!@in_game || !@my_turn || square == " "}
-            index={index}
+            disabled={!@in_game || !@my_turn}
+            phx-click="take_turn"
+            phx-value-square={index}
           />
         <% end %>
       </div>
@@ -122,7 +124,7 @@
             <div class="column">
               <input type="submit" value="Send" disabled={!@in_game || !@chat_message_valid} />
               <%= if @game_state.winner do %>
-                <input type="button" value="Rematch!" />
+                <input type="button" value="Rematch!" phx-click="rematch" />
               <% end %>
             </div>
           </div>
