@@ -114,8 +114,16 @@ defmodule TictactoeLive.Games.GameState do
     Enum.map(chat, fn chat_message ->
       case chat_message.source do
         {:player, id} ->
-          {:ok, player} = find_player(game, id)
-          %ChatMessage{chat_message | source: {:player, player}}
+          case find_player(game, id) do
+            {:ok, player} ->
+              %{chat_message | source: {:player, player}}
+
+            {:error, _} ->
+              %{
+                chat_message
+                | source: {:player, %Player{id: id, name: "Unknown", team: "?"}}
+              }
+          end
 
         :system ->
           chat_message
