@@ -12,10 +12,21 @@ defmodule TictactoeLiveWeb.GameLive do
 
   @impl true
   def mount(_params, _session, socket) do
+    connect_params =
+      dbg(
+        case get_connect_params(socket) do
+          nil -> %{}
+          params -> params
+        end
+      )
+
+    player_name = Map.get(connect_params, "player_name", "")
+    join_token = Map.get(connect_params, "join_token", "")
+
     {:ok,
      socket
      |> assign_current_date()
-     |> set_initial_state(player_name: "", join_token: "")}
+     |> set_initial_state(player_name: player_name, join_token: join_token)}
   end
 
   # Needed by layout, normally a plug but when switching to live we need it here
@@ -24,20 +35,32 @@ defmodule TictactoeLiveWeb.GameLive do
   end
 
   @impl true
-  def handle_params(params, _, socket) do
-    player_name = Map.get(params, "player_name", "")
-    join_token = Map.get(params, "join_token", "")
+  def handle_params(%{"token" => join_token}, _, socket) do
+    Logger.debug(
+      "#{inspect(self())} GameLive.handle_params(): immediately joining game: #{inspect(join_token)}"
+    )
+
     form = socket.assigns.form
-    form = %{form | player_name: player_name, join_token: join_token}
-    {:noreply, socket |> assign(:form, form)}
+    form = %{form | join_token: join_token}
+
+    {:noreply,
+     socket
+     |> assign(:form, form)
+     |> join_game(form.player_name, join_token)}
+  end
+
+  def handle_params(_params, _, socket) do
+    {:noreply, socket}
   end
 
   defp set_initial_state(socket, player_name: player_name, join_token: join_token)
        when is_binary(player_name) and is_binary(join_token) do
     socket
-    |> assign(:form, Form.new())
+    |> assign(:form, %Form{
+      player_name: String.trim(player_name),
+      join_token: String.trim(join_token)
+    })
     |> assign(:chat_message, "")
-    |> assign(:join_token, String.trim(join_token))
     # Default player is X, with no name
     |> assign(:player, Player.new())
     # Default game state is empty
@@ -90,27 +113,7 @@ defmodule TictactoeLiveWeb.GameLive do
         %{"player_name" => player_name, "join_token" => join_token} = _params,
         socket
       ) do
-    # TODO: trimming is probably redundant here
-    join_token = String.trim(join_token)
-    player_name = String.trim(player_name)
-
-    form = socket.assigns.form
-
-    {:ok, join_token, game_pid} = Games.lookup_or_start_game(join_token)
-    game_ref = Process.monitor(game_pid)
-    form = %{form | join_token: join_token}
-
-    {:ok, player, game_state} = GameServer.join_game(game_pid, player_name)
-    form = %{form | player_name: player.name}
-
-    {:noreply,
-     socket
-     |> assign(:form, form)
-     |> assign(:player, player)
-     |> assign(:game_pid, game_pid)
-     |> assign(:game_ref, game_ref)
-     |> assign(:game_state, game_state)
-     |> update_ui_from_game_state()}
+    {:noreply, socket |> join_game(player_name, join_token)}
   end
 
   def handle_event("leave_game", _params, socket) do
@@ -189,6 +192,28 @@ defmodule TictactoeLiveWeb.GameLive do
 
   defp in_game?(socket) do
     socket.assigns.in_game
+  end
+
+  defp join_game(socket, player_name, join_token) do
+    join_token = String.trim(join_token)
+    player_name = String.trim(player_name)
+
+    form = socket.assigns.form
+
+    {:ok, join_token, game_pid} = Games.lookup_or_start_game(join_token)
+    game_ref = Process.monitor(game_pid)
+    form = %{form | join_token: join_token}
+
+    {:ok, player, game_state} = GameServer.join_game(game_pid, player_name)
+    form = %{form | player_name: player.name}
+
+    socket
+    |> assign(:form, form)
+    |> assign(:player, player)
+    |> assign(:game_pid, game_pid)
+    |> assign(:game_ref, game_ref)
+    |> assign(:game_state, game_state)
+    |> update_ui_from_game_state()
   end
 
   defp update_ui_from_game_state(socket) do
