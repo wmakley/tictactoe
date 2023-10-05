@@ -126,7 +126,10 @@ defmodule TictactoeLiveWeb.GameLive do
         %{"player_name" => player_name, "join_token" => join_token} = _params,
         socket
       ) do
-    {:noreply, socket |> join_game(player_name, join_token)}
+    {:noreply,
+     socket
+     |> join_game(player_name, join_token)
+     |> push_patch(to: ~p"/?token=#{join_token}")}
   end
 
   def handle_event("leave_game", _params, socket) do
@@ -142,7 +145,8 @@ defmodule TictactoeLiveWeb.GameLive do
      socket
      |> assign(:game_pid, nil)
      |> assign(:game_ref, nil)
-     |> update_ui_from_game_state()}
+     |> update_ui_from_game_state()
+     |> push_patch(to: ~p"/")}
   end
 
   def handle_event("validate_chat_message", %{"msg" => msg}, socket) do
