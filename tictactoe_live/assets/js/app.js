@@ -14,20 +14,6 @@
 //
 //     import "some-package"
 //
-// Custom JS:
-
-// Get last player name from local storage:
-let playerName = localStorage.getItem("playerName") || ""
-console.debug("playerName", playerName)
-if (playerName.length > 32) {
-  console.error("playerName too long")
-  playerName = playerName.slice(0, 32)
-}
-
-window.addEventListener("tictactoe:player_name_changed", (event) => {
-  console.debug("tictactoe:player_name_changed", event.detail)
-  localStorage.setItem("playerName", event.detail)
-})
 
 // Include phoenix_html to handle method=PUT/DELETE in forms and buttons.
 import "phoenix_html"
@@ -36,12 +22,30 @@ import {Socket} from "phoenix"
 import {LiveSocket} from "phoenix_live_view"
 import topbar from "../vendor/topbar"
 
+// Custom JS:
+
+// Get last player name from local storage:
+let playerName = localStorage.getItem("playerName") || ""
+console.debug("initial playerName:", playerName)
+
+// Save the player name every time it changes:
+window.addEventListener("phx:player_name_changed", (event) => {
+  const newName = event.detail.value
+  console.debug("phx:player_name_changed to:", newName)
+  playerName = newName
+  localStorage.setItem("playerName", newName)
+})
+
+const Hooks = {
+}
+
 let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
 let liveSocket = new LiveSocket("/live", Socket, {
   params: {
     _csrf_token: csrfToken,
     player_name: playerName,
   },
+  hooks: Hooks,
 })
 
 // Show progress bar on live navigation and form submits

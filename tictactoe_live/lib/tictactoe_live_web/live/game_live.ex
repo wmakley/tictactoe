@@ -84,16 +84,24 @@ defmodule TictactoeLiveWeb.GameLive do
     {:noreply, socket |> assign(:form, form)}
   end
 
-  def handle_event("update_player_name", %{"value" => name}, socket) do
-    name = String.trim(name)
+  def handle_event("update_player_name", %{"value" => name} = params, socket) do
+    name = name |> String.trim() |> String.slice(0..32)
     player = socket.assigns.player
 
-    if in_game?(socket) && name != player.name do
+    name_changed = name != player.name
+
+    if name_changed do
       form = socket.assigns.form
       form = %{form | player_name: name}
 
       {:ok, normalized_name, game_state} =
-        GameServer.update_player_name(socket.assigns.game_pid, name)
+        if in_game?(socket) do
+          # Allow the game server to make changes it deems necessary.
+          GameServer.update_player_name(socket.assigns.game_pid, name)
+        else
+          # No additional normalization if not in-game.
+          {:ok, name, socket.assigns.game_state}
+        end
 
       player = %{player | name: normalized_name}
 
@@ -102,8 +110,13 @@ defmodule TictactoeLiveWeb.GameLive do
        |> assign(:form, form)
        |> assign(:game_state, game_state)
        |> assign(:player, player)
-       |> update_ui_from_game_state()}
+       |> update_ui_from_game_state()
+       |> push_event("player_name_changed", %{value: name})}
     else
+      Logger.debug(
+        "#{inspect(self())} GameLive.handle_event(\"update_player_name\", #{inspect(params)}): name not actually changed"
+      )
+
       {:noreply, socket}
     end
   end
