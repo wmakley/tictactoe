@@ -36,8 +36,20 @@ window.addEventListener("phx:player_name_changed", (event) => {
   localStorage.setItem("playerName", newName)
 })
 
+// Scroll chat to bottom any time the game state changes, as all state changes
+// are accompanied by a new chat message:
+window.addEventListener("phx:game_state_changed", () => {
+  const chat = document.getElementById("chat-messages");
+  if (chat) {
+    chat.scrollTop = chat.scrollHeight;
+  }
+})
+
 const Hooks = {
+  // Put hooks here if they are ever needed.
 }
+
+// Default LiveView setup:
 
 let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
 let liveSocket = new LiveSocket("/live", Socket, {

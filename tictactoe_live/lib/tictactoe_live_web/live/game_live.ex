@@ -203,7 +203,8 @@ defmodule TictactoeLiveWeb.GameLive do
     {:noreply,
      socket
      |> assign(:game_state, game_state)
-     |> update_ui_from_game_state()}
+     |> update_ui_from_game_state()
+     |> push_event("game_state_changed", %{})}
   end
 
   defp in_game?(socket) do
