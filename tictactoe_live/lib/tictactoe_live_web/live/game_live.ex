@@ -35,22 +35,20 @@ defmodule TictactoeLiveWeb.GameLive do
   end
 
   @impl true
-  def handle_params(%{"token" => join_token}, _, socket) do
-    Logger.debug(
-      "#{inspect(self())} GameLive.handle_params(): immediately joining game: #{inspect(join_token)}"
-    )
+  def handle_params(params, _, socket) do
+    join_token = Map.get(params, "token", "") |> String.trim()
 
-    form = socket.assigns.form
-    form = %{form | join_token: join_token}
+    if join_token == "" || in_game?(socket) do
+      {:noreply, socket}
+    else
+      form = socket.assigns.form
+      form = %{form | join_token: join_token}
 
-    {:noreply,
-     socket
-     |> assign(:form, form)
-     |> join_game(form.player_name, join_token)}
-  end
-
-  def handle_params(_params, _, socket) do
-    {:noreply, socket}
+      {:noreply,
+       socket
+       |> assign(:form, form)
+       |> join_game(socket.assigns.form.player_name, join_token)}
+    end
   end
 
   defp set_initial_state(socket, player_name: player_name, join_token: join_token)
@@ -68,6 +66,7 @@ defmodule TictactoeLiveWeb.GameLive do
     |> assign(:game_pid, nil)
     |> assign(:game_ref, nil)
     |> assign(:chat_message_valid, false)
+    |> assign(:join_game_error, nil)
     |> update_ui_from_game_state
   end
 
@@ -123,12 +122,12 @@ defmodule TictactoeLiveWeb.GameLive do
 
   def handle_event(
         "join_game",
-        %{"player_name" => player_name, "join_token" => join_token} = _params,
+        %{"join_token" => join_token} = _params,
         socket
       ) do
+    # Game is joined via handle_params, making the URL the source of truth
     {:noreply,
      socket
-     |> join_game(player_name, join_token)
      |> push_patch(to: ~p"/?token=#{join_token}")}
   end
 
@@ -221,16 +220,27 @@ defmodule TictactoeLiveWeb.GameLive do
     game_ref = Process.monitor(game_pid)
     form = %{form | join_token: join_token}
 
-    {:ok, player, game_state} = GameServer.join_game(game_pid, player_name)
-    form = %{form | player_name: player.name}
+    case GameServer.join_game(game_pid, player_name) do
+      {:ok, player, game_state} ->
+        form = %{form | player_name: player.name}
 
-    socket
-    |> assign(:form, form)
-    |> assign(:player, player)
-    |> assign(:game_pid, game_pid)
-    |> assign(:game_ref, game_ref)
-    |> assign(:game_state, game_state)
-    |> update_ui_from_game_state()
+        socket
+        |> assign(:form, form)
+        |> assign(:player, player)
+        |> assign(:game_pid, game_pid)
+        |> assign(:game_ref, game_ref)
+        |> assign(:game_state, game_state)
+        |> assign(:join_game_error, nil)
+        |> update_ui_from_game_state()
+
+      {:error, reason} ->
+        Logger.error("#{inspect(self())} GameLive.join_game(): #{inspect(reason)}")
+
+        socket
+        |> assign(:form, form)
+        |> put_flash(:error, "Error joining game: #{reason}")
+        |> assign(:join_game_error, reason)
+    end
   end
 
   defp update_ui_from_game_state(socket) do

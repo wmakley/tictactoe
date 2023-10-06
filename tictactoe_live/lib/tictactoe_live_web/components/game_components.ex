@@ -13,4 +13,16 @@ defmodule TictactoeLiveWeb.GameComponents do
     </div>
     """
   end
+
+  attr :value, :string
+
+  def join_game_error(assigns) do
+    ~H"""
+    <% if @value do %>
+      <div class="join-error">
+        <p>Join error: <%= @value %></p>
+      </div>
+    <% end %>
+    """
+  end
 end
