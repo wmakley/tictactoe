@@ -107,7 +107,7 @@ defmodule TictactoeLiveWeb.CoreComponents do
 
   def flash(assigns) do
     ~H"""
-    <div
+    <blockquote
       :if={msg = render_slot(@inner_block) || Phoenix.Flash.get(@flash, @kind)}
       id={@id}
       phx-click={JS.push("lv:clear-flash", value: %{key: @kind}) |> hide("##{@id}")}
@@ -128,7 +128,7 @@ defmodule TictactoeLiveWeb.CoreComponents do
       <button type="button" class="group absolute top-1 right-1 p-2" aria-label={gettext("close")}>
         <.icon name="hero-x-mark-solid" class="h-5 w-5 opacity-40 group-hover:opacity-70" />
       </button>
-    </div>
+    </blockquote>
     """
   end
 
