@@ -233,6 +233,7 @@ defmodule TictactoeLiveWeb.GameLive do
         |> assign(:game_state, game_state)
         |> assign(:join_game_error, nil)
         |> update_ui_from_game_state()
+        |> push_event("game_state_changed", %{})
 
       {:error, reason} ->
         Logger.error("#{inspect(self())} GameLive.join_game(): #{inspect(reason)}")
