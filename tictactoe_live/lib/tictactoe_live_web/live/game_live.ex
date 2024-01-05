@@ -58,7 +58,7 @@ defmodule TictactoeLiveWeb.GameLive do
   defp apply_action(:game, %{"token" => join_token}, socket) do
     if in_game?(socket) do
       # TODO: ask player if they want to leave and join another game if token changed
-      {:noreply, socket}
+      {:noreply, socket |> update_ui_from_game_state()}
     else
       form = socket.assigns.form
       form = %{form | join_token: join_token}
@@ -190,12 +190,17 @@ defmodule TictactoeLiveWeb.GameLive do
 
   def handle_event("take_turn", %{"square" => square}, socket) do
     index = String.to_integer(square)
-    {:ok, game_state} = GameServer.take_turn(socket.assigns.game_pid, index)
 
-    {:noreply,
-     socket
-     |> assign(:game_state, game_state)
-     |> update_ui_from_game_state()}
+    case GameServer.take_turn(socket.assigns.game_pid, index) do
+      {:ok, game_state} ->
+        {:noreply,
+         socket
+         |> assign(:game_state, game_state)
+         |> update_ui_from_game_state()}
+
+      {:error, reason} ->
+        {:noreply, socket |> put_flash(:error, reason)}
+    end
   end
 
   def handle_event("rematch", _params, socket) do
@@ -231,6 +236,10 @@ defmodule TictactoeLiveWeb.GameLive do
 
   defp in_game?(socket) do
     socket.assigns.in_game
+  end
+
+  defp game_over?(game_state) do
+    game_state.winner != nil
   end
 
   defp join_game(socket, player_name, join_token) do
