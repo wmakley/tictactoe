@@ -28,10 +28,21 @@ defmodule TictactoeLive.Games.GameServer do
 
   ## Client
 
-  @spec join_game(GenServer.server(), String.t()) ::
-          {:error, String.t()} | {:ok, Tictactoe.Player.t(), GameState.t()}
-  def join_game(server, name) when is_binary(name) do
-    GenServer.call(server, {:join_game, name})
+  @doc """
+  Join a game server as a player and subscribe to state changes.
+  """
+  @spec join_game_as_player(GenServer.server(), String.t()) ::
+          {:error, String.t()}
+          | {:ok, id(), :player, Tictactoe.Player.t(), :state, GameState.t()}
+  def join_game_as_player(server, player_name) when is_binary(player_name) do
+    case GenServer.call(server, {:join_game, player_name}) do
+      {:ok, game_id, :player, _player, :state, _state} = result ->
+        Phoenix.PubSub.subscribe(TictactoeLive.PubSub, "game:#{game_id}")
+        result
+
+      {:error, reason} ->
+        {:error, reason}
+    end
   end
 
   @spec leave_game(GenServer.server()) :: :ok
@@ -64,7 +75,7 @@ defmodule TictactoeLive.Games.GameServer do
   @doc """
   Dump the server state.
   """
-  @spec dump_state(pid) :: any
+  @spec dump_state(pid) :: Map
   def dump_state(pid) do
     GenServer.call(pid, :dump_state)
   end
@@ -91,7 +102,7 @@ defmodule TictactoeLive.Games.GameServer do
 
     case GameState.add_player(state.game, name) do
       {:ok, player, game} ->
-        {:reply, {:ok, player, game},
+        {:reply, {:ok, state.id, :player, player, :state, game},
          state
          |> update_game_state(game)
          |> broadcast_state_to_players()
@@ -209,9 +220,9 @@ defmodule TictactoeLive.Games.GameServer do
     )
   end
 
-  @spec random_id() :: String.t()
-  def random_id() do
-    for _ <- 1..7,
+  @spec random_id(integer()) :: String.t()
+  def random_id(length) when is_integer(length) do
+    for _ <- 1..length,
         into: "",
         do: random_char()
   end
@@ -282,14 +293,14 @@ defmodule TictactoeLive.Games.GameServer do
      }}
   end
 
+  # Push state changes to pub-sub to allow for multiple observers.
   defp broadcast_state_to_players(state) do
-    pids = Map.keys(state.connections)
-
-    Logger.debug("#{inspect(self())} GameServer.broadcast_state_to_players(#{inspect(pids)})")
-
-    Enum.each(pids, fn pid ->
-      :ok = Process.send(pid, {:game_state, state.game}, [])
-    end)
+    :ok =
+      Phoenix.PubSub.broadcast(
+        TictactoeLive.PubSub,
+        "game:#{state.id}",
+        {:game_state, state.id, state.game}
+      )
 
     state
   end

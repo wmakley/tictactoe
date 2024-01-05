@@ -1,5 +1,4 @@
 defmodule TictactoeLiveWeb.GameLive do
-  require Logger
   use TictactoeLiveWeb, :live_view
 
   import TictactoeLiveWeb.GameComponents
@@ -10,15 +9,17 @@ defmodule TictactoeLiveWeb.GameLive do
   alias TictactoeLive.Games.GameServer
   alias TictactoeLiveWeb.GameLive.Form
 
+  require Logger
+
   @impl true
   def mount(_params, _session, socket) do
     connect_params =
-      dbg(
-        case get_connect_params(socket) do
-          nil -> %{}
-          params -> params
-        end
-      )
+      case get_connect_params(socket) do
+        nil -> %{}
+        params -> params
+      end
+
+    # |> dbg
 
     player_name = Map.get(connect_params, "player_name", "")
     join_token = Map.get(connect_params, "join_token", "")
@@ -35,10 +36,30 @@ defmodule TictactoeLiveWeb.GameLive do
   end
 
   @impl true
-  def handle_params(params, _, socket) do
-    join_token = Map.get(params, "token", "") |> String.trim()
+  def handle_params(params, _uri, socket) do
+    Logger.debug(
+      "apply_action(#{inspect(socket.assigns.live_action)}, #{inspect(params)}) in #{__MODULE__}"
+    )
 
-    if join_token == "" || in_game?(socket) do
+    apply_action(socket.assigns.live_action, params, socket)
+  end
+
+  # Not in game
+  defp apply_action(:home, _params, socket) do
+    if in_game?(socket) do
+      {:noreply,
+       socket |> push_patch(to: ~p"/game/#{socket.assigns.form.join_token}", replace: true)}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  # Join or play a game
+  defp apply_action(:game, params, socket) do
+    join_token = Map.get(params, "token", "")
+
+    if in_game?(socket) do
+      # TODO: ask player if they want to leave and join another game if token changed
       {:noreply, socket}
     else
       form = socket.assigns.form
@@ -47,7 +68,7 @@ defmodule TictactoeLiveWeb.GameLive do
       {:noreply,
        socket
        |> assign(:form, form)
-       |> join_game(socket.assigns.form.player_name, join_token)}
+       |> join_game(form.player_name, join_token)}
     end
   end
 
@@ -71,17 +92,17 @@ defmodule TictactoeLiveWeb.GameLive do
   end
 
   @impl true
-  def handle_event("form_changed", params, socket) do
-    # TODO: this handler may not be needed
-    form = socket.assigns.form
-    player_name = Map.get(params, "player_name", "")
-    join_token = Map.get(params, "join_token", "")
+  # def handle_event("form_changed", params, socket) do
+  #   # TODO: this handler may not be needed
+  #   form = socket.assigns.form
+  #   player_name = Map.get(params, "player_name", "")
+  #   join_token = Map.get(params, "join_token", "")
 
-    # update form values
-    form = %{form | player_name: player_name, join_token: join_token}
+  #   # update form values
+  #   form = %{form | player_name: player_name, join_token: join_token}
 
-    {:noreply, socket |> assign(:form, form)}
-  end
+  #   {:noreply, socket |> assign(:form, form)}
+  # end
 
   def handle_event("update_player_name", %{"value" => name} = params, socket) do
     name = name |> String.trim() |> String.slice(0..32)
@@ -125,10 +146,13 @@ defmodule TictactoeLiveWeb.GameLive do
         %{"join_token" => join_token} = _params,
         socket
       ) do
+    form = %{socket.assigns.form | join_token: join_token}
+
     # Game is joined via handle_params, making the URL the source of truth
     {:noreply,
      socket
-     |> push_patch(to: ~p"/?token=#{join_token}")}
+     |> assign(:form, form)
+     |> push_patch(to: ~p"/game/join")}
   end
 
   def handle_event("leave_game", _params, socket) do
@@ -199,7 +223,7 @@ defmodule TictactoeLiveWeb.GameLive do
      |> update_ui_from_game_state()}
   end
 
-  def handle_info({:game_state, game_state}, socket) do
+  def handle_info({:game_state, _game_id, game_state}, socket) do
     {:noreply,
      socket
      |> assign(:game_state, game_state)
@@ -217,29 +241,30 @@ defmodule TictactoeLiveWeb.GameLive do
 
     form = socket.assigns.form
 
-    {:ok, join_token, game_pid} = Games.lookup_or_start_game(join_token)
-    game_ref = Process.monitor(game_pid)
-    form = %{form | join_token: join_token}
+    # TODO: maybe subscribing to the game state should be part of joining?
+    with {:ok, game_id, game_pid} <- Games.lookup_or_start_game(join_token),
+         {:ok, _game_id, :player, player, :state, game_state} <-
+           GameServer.join_game_as_player(game_pid, player_name) do
+      # need to know if game crashes
+      game_ref = Process.monitor(game_pid)
 
-    case GameServer.join_game(game_pid, player_name) do
-      {:ok, player, game_state} ->
-        form = %{form | player_name: player.name}
+      # update form with normalized inputs
+      form = %{form | join_token: game_id, player_name: player.name}
 
-        socket
-        |> assign(:form, form)
-        |> assign(:player, player)
-        |> assign(:game_pid, game_pid)
-        |> assign(:game_ref, game_ref)
-        |> assign(:game_state, game_state)
-        |> assign(:join_game_error, nil)
-        |> update_ui_from_game_state()
-        |> push_event("game_state_changed", %{})
-
+      socket
+      |> assign(:form, form)
+      |> assign(:player, player)
+      |> assign(:game_pid, game_pid)
+      |> assign(:game_ref, game_ref)
+      |> assign(:game_state, game_state)
+      |> assign(:join_game_error, nil)
+      |> update_ui_from_game_state()
+      |> push_event("game_state_changed", %{})
+    else
       {:error, reason} ->
         Logger.error("#{inspect(self())} GameLive.join_game(): #{inspect(reason)}")
 
         socket
-        |> assign(:form, form)
         |> put_flash(:error, "Error joining game: #{reason}")
         |> assign(:join_game_error, reason)
     end

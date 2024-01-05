@@ -1,7 +1,7 @@
 defmodule TictactoeLive.GamesTest do
   # use TictactoeLive.DataCase
 
-  alias TictactoeLive.Games
+  # alias TictactoeLive.Games
 
   # describe "games" do
   #   alias TictactoeLive.Games.Game

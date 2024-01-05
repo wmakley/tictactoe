@@ -8,7 +8,15 @@ defmodule TictactoeLiveWeb.GameComponents do
 
   def square(assigns) do
     ~H"""
-    <div class={["game-square", @disabled && "disabled", !@disabled && "enabled", String.downcase(@value)]} {@rest}>
+    <div
+      class={[
+        "game-square",
+        @disabled && "disabled",
+        !@disabled && "enabled",
+        String.downcase(@value)
+      ]}
+      {@rest}
+    >
       <%= @value %>
     </div>
     """
@@ -18,7 +26,7 @@ defmodule TictactoeLiveWeb.GameComponents do
 
   def join_game_error(assigns) do
     ~H"""
-    <% if @value do %>
+    <%= if @value do %>
       <div class="join-error">
         <p>Join error: <%= @value %></p>
       </div>
