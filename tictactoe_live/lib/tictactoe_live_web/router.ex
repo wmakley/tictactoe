@@ -23,7 +23,6 @@ defmodule TictactoeLiveWeb.Router do
     pipe_through :browser
 
     live "/", GameLive, :home
-    live "/game/join", GameLive, :game
     live "/game/:token", GameLive, :game
   end
 

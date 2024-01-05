@@ -55,9 +55,7 @@ defmodule TictactoeLiveWeb.GameLive do
   end
 
   # Join or play a game
-  defp apply_action(:game, params, socket) do
-    join_token = Map.get(params, "token", "")
-
+  defp apply_action(:game, %{"token" => join_token}, socket) do
     if in_game?(socket) do
       # TODO: ask player if they want to leave and join another game if token changed
       {:noreply, socket}
@@ -152,7 +150,7 @@ defmodule TictactoeLiveWeb.GameLive do
     {:noreply,
      socket
      |> assign(:form, form)
-     |> push_patch(to: ~p"/game/join")}
+     |> join_game(form.player_name, form.join_token)}
   end
 
   def handle_event("leave_game", _params, socket) do
@@ -251,15 +249,22 @@ defmodule TictactoeLiveWeb.GameLive do
       # update form with normalized inputs
       form = %{form | join_token: game_id, player_name: player.name}
 
-      socket
-      |> assign(:form, form)
-      |> assign(:player, player)
-      |> assign(:game_pid, game_pid)
-      |> assign(:game_ref, game_ref)
-      |> assign(:game_state, game_state)
-      |> assign(:join_game_error, nil)
-      |> update_ui_from_game_state()
-      |> push_event("game_state_changed", %{})
+      socket =
+        socket
+        |> assign(:form, form)
+        |> assign(:player, player)
+        |> assign(:game_pid, game_pid)
+        |> assign(:game_ref, game_ref)
+        |> assign(:game_state, game_state)
+        |> assign(:join_game_error, nil)
+        |> update_ui_from_game_state()
+        |> push_event("game_state_changed", %{})
+
+      if socket.assigns.live_action != :game do
+        socket |> push_patch(to: ~p"/game/#{game_id}")
+      else
+        socket
+      end
     else
       {:error, reason} ->
         Logger.error("#{inspect(self())} GameLive.join_game(): #{inspect(reason)}")
