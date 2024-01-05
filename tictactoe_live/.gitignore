@@ -35,3 +35,6 @@ tictactoe_live-*.tar
 npm-debug.log
 /assets/node_modules/
 
+# Editors
+.vscode
+.idea
