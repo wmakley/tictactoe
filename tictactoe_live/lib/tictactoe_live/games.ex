@@ -4,7 +4,7 @@ defmodule TictactoeLive.Games do
   """
 
   alias TictactoeLive.Games.GameServer
-  alias TictactoeLive.Games.GameRegistry
+  # alias TictactoeLive.Games.GameRegistry
   alias TictactoeLive.Games.GameSupervisor
 
   @type join_token() :: String.t()
@@ -14,15 +14,8 @@ defmodule TictactoeLive.Games do
     normalized_id = trimmed_or_random_id(id)
 
     with {:ok, id} <- validate_id(normalized_id) do
-      case Registry.lookup(GameRegistry, id) do
-        [{game_pid, nil}] ->
-          if Process.alive?(game_pid) do
-            {:ok, id, game_pid}
-          else
-            {:error, "game is not running"}
-          end
-
-        [] ->
+      case :global.whereis_name({:game, id}) do
+        :undefined ->
           case DynamicSupervisor.start_child(
                  GameSupervisor,
                  {GameServer, id: id, name: game_name(id)}
@@ -33,6 +26,13 @@ defmodule TictactoeLive.Games do
             {:error, reason} ->
               {:error, "error starting game: #{inspect(reason)}"}
           end
+
+        game_pid ->
+          if Process.alive?(game_pid) do
+            {:ok, id, game_pid}
+          else
+            {:error, "game is not running"}
+          end
       end
     else
       {:error, reason} ->
@@ -40,9 +40,9 @@ defmodule TictactoeLive.Games do
     end
   end
 
-  @spec game_name(String.t()) :: {:via, Registry, {GameRegistry, binary}}
+  @spec game_name(String.t()) :: {:global, {:game, Game.id()}}
   defp game_name(id) when is_binary(id) do
-    {:via, Registry, {GameRegistry, id}}
+    {:global, {:game, id}}
   end
 
   @spec trimmed_or_random_id(String.t()) :: String.t()

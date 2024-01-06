@@ -15,7 +15,7 @@ defmodule TictactoeLive.Application do
       # Start Finch
       {Finch, name: TictactoeLive.Finch},
       # Game registry
-      {Registry, keys: :unique, name: TictactoeLive.Games.GameRegistry},
+      # {Registry, keys: :unique, name: TictactoeLive.Games.GameRegistry},
       {DynamicSupervisor, name: TictactoeLive.Games.GameSupervisor},
       # Start the Endpoint (http/https)
       TictactoeLiveWeb.Endpoint
