@@ -231,7 +231,15 @@ defmodule TictactoeLiveWeb.GameLive do
   end
 
   def handle_info({:game_state, _game_id, game_state}, socket) do
-    {:ok, player} = GameState.find_player(game_state, socket.assigns.player.id)
+    # player will not be in the game state if they have disconnected
+    player =
+      case GameState.find_player(game_state, socket.assigns.player.id) do
+        {:ok, player} ->
+          player
+
+        {:error, _} ->
+          socket.assigns.player
+      end
 
     {:noreply,
      socket
