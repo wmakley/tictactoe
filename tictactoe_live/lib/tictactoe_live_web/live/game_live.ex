@@ -19,8 +19,6 @@ defmodule TictactoeLiveWeb.GameLive do
         params -> params
       end
 
-    # |> dbg
-
     player_name = Map.get(connect_params, "player_name", "")
     join_token = Map.get(connect_params, "join_token", "")
 
