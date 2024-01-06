@@ -1,4 +1,8 @@
 defmodule Tictactoe.Game do
+  @moduledoc """
+  Data structure representing the state of a game of Tic-Tac-Toe.
+  """
+
   defstruct players: [],
             board: [" ", " ", " ", " ", " ", " ", " ", " ", " "],
             turn: "X",
@@ -14,9 +18,11 @@ defmodule Tictactoe.Game do
     %__MODULE__{}
   end
 
-  def add_player(%__MODULE__{players: players} = game, name) do
+  @spec add_player(%__MODULE__{}, String.t()) ::
+          {:ok, %Player{}, %__MODULE__{}} | {:error, String.t()}
+  def add_player(%__MODULE__{players: players} = game, name) when is_binary(name) do
     if length(players) == 2 do
-      {:error, "Game is full", game}
+      {:error, "Game is full"}
     else
       case List.last(players) do
         nil ->
@@ -31,7 +37,9 @@ defmodule Tictactoe.Game do
     end
   end
 
-  defp add_player(%__MODULE__{} = game, name, id, team) do
+  defp add_player(%__MODULE__{} = game, name, id, team)
+       when is_binary(name) and is_integer(id) and is_binary(team) do
+    name = normalize_player_name(name)
     player = %Player{id: id, name: name, team: team}
 
     game =
@@ -41,25 +49,43 @@ defmodule Tictactoe.Game do
     {:ok, player, game}
   end
 
+  defp normalize_player_name(player_name) when is_binary(player_name) do
+    trimmed = String.trim(player_name)
+
+    case trimmed do
+      "" ->
+        "Unnamed Player"
+
+      _ ->
+        trimmed
+    end
+  end
+
+  @spec enough_players?(%__MODULE__{}) :: boolean()
+  def enough_players?(%__MODULE__{} = game) do
+    length(game.players) == 2
+  end
+
+  @doc """
+  Return true if the game is in progress (all players have joined, but no winner yet)
+  """
+  @spec in_game?(%__MODULE__{}) :: boolean()
+  def in_game?(%__MODULE__{winner: winner} = game) do
+    winner == nil && enough_players?(game)
+  end
+
+  @spec update_player_name(%__MODULE__{}, integer, String.t()) ::
+          {:ok, String.t(), %__MODULE__{}} | {:error, String.t()}
   def update_player_name(%__MODULE__{} = game, id, name)
       when is_integer(id) and is_binary(name) do
-    trimmed = String.trim(name)
+    name = normalize_player_name(name)
 
-    normalized =
-      case trimmed do
-        "" ->
-          "Unnamed Player"
-
-        _ ->
-          trimmed
-      end
-
-    with {:ok, game} <- update_player(game, id, fn p -> %{p | name: normalized} end) do
+    with {:ok, game} <- update_player(game, id, fn p -> %{p | name: name} end) do
       game =
         game
-        |> add_chat_message({:player, id}, "Now my name is \"#{normalized}\"!")
+        |> add_chat_message({:player, id}, "Now my name is \"#{name}\"!")
 
-      {:ok, game}
+      {:ok, name, game}
     else
       {:error, reason} ->
         {:error, reason}
@@ -84,9 +110,30 @@ defmodule Tictactoe.Game do
     end
   end
 
+  def chat_messages_with_player_details(%__MODULE__{chat: chat} = game) do
+    Enum.map(chat, fn chat_message ->
+      case chat_message.source do
+        {:player, id} ->
+          case find_player(game, id) do
+            {:ok, player} ->
+              %{chat_message | source: {:player, player}}
+
+            {:error, _} ->
+              %{
+                chat_message
+                | source: {:player, %Player{id: id, name: "Unknown", team: "?"}}
+              }
+          end
+
+        :system ->
+          chat_message
+      end
+    end)
+  end
+
   @spec find_player(game :: %__MODULE__{}, id :: integer) ::
           {:ok, %Player{}} | {:error, String.t()}
-  defp find_player(%__MODULE__{} = game, id) when is_integer(id) do
+  def find_player(%__MODULE__{} = game, id) when is_integer(id) do
     case Enum.find(game.players, fn p -> p.id == id end) do
       nil ->
         {:error, "Player not found"}
