@@ -206,9 +206,13 @@ defmodule TictactoeLiveWeb.GameLive do
   def handle_event("rematch", _params, socket) do
     {:ok, game_state} = GameServer.rematch(socket.assigns.game_pid)
 
+    # player's team will have changed
+    {:ok, player} = GameState.find_player(game_state, socket.assigns.player.id)
+
     {:noreply,
      socket
      |> assign(:game_state, game_state)
+     |> assign(:player, player)
      |> update_ui_from_game_state()}
   end
 
@@ -227,8 +231,11 @@ defmodule TictactoeLiveWeb.GameLive do
   end
 
   def handle_info({:game_state, _game_id, game_state}, socket) do
+    {:ok, player} = GameState.find_player(game_state, socket.assigns.player.id)
+
     {:noreply,
      socket
+     |> assign(:player, player)
      |> assign(:game_state, game_state)
      |> update_ui_from_game_state()
      |> push_event("game_state_changed", %{})}
