@@ -291,10 +291,12 @@ defmodule TictactoeLiveWeb.GameLive do
     game_state = socket.assigns.game_state
 
     # Game server tracks wins and losses in the player record
-    my_turn = player.team == game_state.turn
+
     # Logger.debug("#{player.name}: my_turn: #{inspect(my_turn)}")
 
     in_game = socket.assigns.game_pid != nil
+
+    my_turn = in_game && game_state.winner == nil && player.team == game_state.turn
     # Logger.debug("#{player.name}: in_game: #{inspect(in_game)}")
 
     # if in_game do

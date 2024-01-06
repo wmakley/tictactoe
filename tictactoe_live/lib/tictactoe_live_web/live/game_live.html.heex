@@ -63,7 +63,7 @@
         Waiting for opponent...
       <% @game_state.winner -> %>
         <%= cond do %>
-          <% @game_state.winner == "Draw" -> %>
+          <% @game_state.winner == :draw -> %>
             Draw!
           <% @game_state.winner == @player.team -> %>
             You won!
@@ -83,8 +83,8 @@
         <%= for {square, index} <- Enum.with_index(@game_state.board) do %>
           <.square
             value={square}
-            disabled={!@in_game || !@my_turn}
-            phx-click={@in_game && !game_over?(@game_state) && @my_turn && "take_turn"}
+            disabled={!@my_turn}
+            phx-click={@my_turn && "take_turn"}
             phx-value-square={index}
           />
         <% end %>
