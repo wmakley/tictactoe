@@ -245,10 +245,6 @@ defmodule TictactoeLiveWeb.GameLive do
     socket.assigns.in_game
   end
 
-  defp game_over?(game_state) do
-    game_state.winner != nil
-  end
-
   defp join_game(socket, player_name, join_token) do
     join_token = String.trim(join_token)
     player_name = String.trim(player_name)
