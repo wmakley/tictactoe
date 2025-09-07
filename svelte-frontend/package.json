@@ -2,6 +2,7 @@
     "name": "tictactoe-svelte-frontend",
     "version": "0.0.1",
     "private": true,
+    "packageManager": "pnpm@10.15.1",
     "scripts": {
         "dev": "SOCKET_URL=localhost:3000 vite dev",
         "build": "vite build",
