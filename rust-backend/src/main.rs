@@ -43,10 +43,8 @@ async fn main() {
     let addr = format!("0.0.0.0:{}", port);
     println!("Listening on {}, set RUST_LOG=\"info,tictactoe_rs=trace,tower_http=trace\" to see detailed logs.", addr);
 
-    axum::Server::bind(&addr.parse().unwrap())
-        .serve(app.into_make_service())
-        .await
-        .unwrap();
+    let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
+    axum::serve(listener, app).await.unwrap();
 }
 
 async fn redirect_to_frontend(State(state): State<Arc<server::State>>) -> Redirect {
@@ -124,8 +122,8 @@ async fn handle_socket(mut socket: WebSocket, params: NewGameParams, state: Arc<
         Ok(c) => c,
         Err(e) => {
             let json = serde_json::to_string(&game::ToBrowser::Error(e)).unwrap();
-            socket.send(Message::Text(json)).await.unwrap();
-            socket.close().await.unwrap();
+            socket.send(Message::Text(json.into())).await.unwrap();
+            socket.send(Message::Close(None)).await.unwrap();
             return;
         }
     };
@@ -136,13 +134,13 @@ async fn handle_socket(mut socket: WebSocket, params: NewGameParams, state: Arc<
         state: conn.game_state.borrow().clone(),
     })
     .unwrap();
-    socket.send(Message::Text(json)).await.unwrap();
+    socket.send(Message::Text(json.into())).await.unwrap();
 
     loop {
         tokio::select! {
             _ = sleep(Duration::from_secs(10)) => {
                 debug!("Socket: Ping");
-                socket.send(Message::Ping(vec![])).await.unwrap();
+                socket.send(Message::Ping(Default::default())).await.unwrap();
             }
             _ = conn.game_state.changed() => {
                 let new_state = {
@@ -151,7 +149,7 @@ async fn handle_socket(mut socket: WebSocket, params: NewGameParams, state: Arc<
                 };
                 // trace!("Socket: Sending game state change: {:?}", new_state);
                 let json = serde_json::to_string(&game::ToBrowser::GameState(new_state)).unwrap();
-                socket.send(Message::Text(json)).await.unwrap();
+                socket.send(Message::Text(json.into())).await.unwrap();
             }
             msg = socket.recv() => {
                 match msg {
@@ -183,7 +181,7 @@ async fn handle_socket(mut socket: WebSocket, params: NewGameParams, state: Arc<
                                 if let Some(e) = server_err {
                                     debug!("Socket: Error handling message: {:?}", e);
                                     let json = serde_json::to_string(&game::ToBrowser::Error(e)).unwrap();
-                                    socket.send(Message::Text(json)).await.unwrap();
+                                    socket.send(Message::Text(json.into())).await.unwrap();
                                 }
                             }
 

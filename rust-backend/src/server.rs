@@ -1,6 +1,6 @@
 // Server state and stats
 use crate::game;
-use rand::{distributions::Alphanumeric, Rng};
+use rand::{distr::Alphanumeric, RngExt};
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 use std::sync::{Arc, Mutex, RwLock};
@@ -98,8 +98,8 @@ pub fn join_or_new_game(
 }
 
 fn random_token() -> String {
-    return rand::thread_rng()
-        .sample_iter(&Alphanumeric)
+    return rand::rng()
+        .sample_iter(Alphanumeric)
         .take(7)
         .map(char::from)
         .collect();
