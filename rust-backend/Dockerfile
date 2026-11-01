@@ -1,4 +1,4 @@
-FROM rust:slim-bullseye as builder
+FROM rust:1.99.1-slim-trixie AS builder
 WORKDIR /usr/src/myapp
 
 # cache dependencies
@@ -13,7 +13,7 @@ RUN sed -i 's#dummy.rs#src/main.rs#' Cargo.toml
 COPY . .
 RUN cargo install --path .
 
-FROM debian:bullseye-slim
+FROM debian:trixie-slim
 COPY --from=builder /usr/local/cargo/bin/tictactoe-rs /usr/local/bin/tictactoe-rs
 WORKDIR /app
 CMD ["tictactoe-rs"]
